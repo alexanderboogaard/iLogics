@@ -1,0 +1,33 @@
+﻿Public Sub Main() 
+	'Check if custom iProperty "PTC_WM_REVISION" exists and has a value less than 1
+	If iProperties.Value("Custom", "PTC_WM_LIFECYCLE_STATE") = "IN WORK" Then
+		Dim oDrawDoc As DrawingDocument = ThisApplication.ActiveDocument
+		Dim oSheet As Sheet = ThisApplication.ActiveDocument.ActiveSheet
+		
+		oTime = Now.ToShortDateString
+		
+		Dim PTCrev As String ' Declare PTCrev as String
+		PTCrev = iProperties.Value("Custom", "PTC_WM_REVISION")
+		
+		If PTCrev < 1 Then ' Update creation date if revision number is less than 1
+			iProperties.Value("Project", "Creation Date") = oTime
+			iLogicVb.UpdateWhenDone = True ' Force model update
+		Else
+			If oSheet.RevisionTables.Count > 0 Then
+				Dim oRevTable As RevisionTable = oDrawDoc.ActiveSheet.RevisionTables.Item(1)
+				Dim oRow As RevisionTableRow = oRevTable.RevisionTableRows.Item(oRevTable.RevisionTableRows.Count)
+				
+				' Make sure we have the active row
+				If oRow.IsActiveRow Then
+					If oRow.Item(1).Text = PTCrev Then
+						' Go through all columns in that row
+						lastColumn = oRevTable.RevisionTableColumns.Count
+						Dim oCell As RevisionTableCell = oRow.Item(lastColumn)
+						' Set all cells to static
+						oCell.Text = oTime
+					End If
+				End If
+			End If
+		End If
+	End If	
+End Sub

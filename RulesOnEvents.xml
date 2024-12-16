@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<GlobalRulesOnEvents xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <RulesByDocumentType>
+    <RulesOnEvents>
+      <DocumentTypes>Drawing</DocumentTypes>
+      <RulesCollection>
+        <RulesOnEvent>
+          <EventType>BeforeDocSave</EventType>
+          <Rules>
+            <RuleOnEvent>
+              <RuleName>Drawing - Multisheet check</RuleName>
+            </RuleOnEvent>
+            <RuleOnEvent>
+              <RuleName>Drawing - Update date in title block &amp; revision</RuleName>
+            </RuleOnEvent>
+          </Rules>
+        </RulesOnEvent>
+      </RulesCollection>
+    </RulesOnEvents>
+    <RulesOnEvents>
+      <DocumentTypes>Assembly</DocumentTypes>
+      <RulesCollection>
+        <RulesOnEvent>
+          <EventType>BeforeDocSave</EventType>
+          <Rules>
+            <RuleOnEvent>
+              <RuleName>Model - Project outdated bridge types</RuleName>
+            </RuleOnEvent>
+          </Rules>
+        </RulesOnEvent>
+        <RulesOnEvent>
+          <EventType>AfterDocSave</EventType>
+          <Rules>
+            <RuleOnEvent>
+              <RuleName>Model - Weight to Mass check</RuleName>
+            </RuleOnEvent>
+          </Rules>
+        </RulesOnEvent>
+      </RulesCollection>
+    </RulesOnEvents>
+  </RulesByDocumentType>
+</GlobalRulesOnEvents>

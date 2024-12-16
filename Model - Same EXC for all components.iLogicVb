@@ -1,0 +1,30 @@
+﻿Sub Main()
+    Dim oAsmCompDef As AssemblyComponentDefinition
+    oAsmCompDef = ThisApplication.ActiveDocument.ComponentDefinition
+    Dim oOccurrence As ComponentOccurrence
+
+    Dim CExt As New ArrayList
+    CExt.Add("EXC 1")
+    CExt.Add("EXC 2")
+    CExt.Add("EXC 3")
+    CExt.Add("EXC 4")
+
+    EXC = InputListBox("Choose execution class", CExt, "EXC", Title:="Execution class", ListName:="Available execution classes")
+
+    If EXC = "" Then 'Failed to select drawing
+        MessageBox.Show("Failed to select execution class. Rule will abort", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error, MessageBoxDefaultButton.Button1)
+        Return
+    End If
+
+    Try
+        Parameter("JBEXECUTIONCLASS") = EXC
+    Catch
+    End Try
+
+    For Each oOccurrence In oAsmCompDef.Occurrences
+        Try
+            Parameter(oOccurrence.Name, "JBEXECUTIONCLASS") = EXC
+        Catch
+        End Try
+    Next
+End Sub

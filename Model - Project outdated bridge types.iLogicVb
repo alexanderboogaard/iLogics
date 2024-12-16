@@ -1,0 +1,42 @@
+﻿
+Try
+	If iProperties.Value("Custom","UPLOAD_SOFT_TYPE") = "local.JansonBridging.PROJECTEPMDocument" Then
+	'If iProperties.Value("Custom", "PROJECTOFFICE") IsNot "" Then
+	'This statement is used to check that an iProperty exists. 
+	'If it exists then it means the model is a project. 
+	'If not, code will go to the catch immediately
+	TryLength = iProperties.Value("Custom", "TYPEOFBRIDGE")
+	
+	'iProperty exists. Now start checking discontinued/empty bridgetypes
+	Dim myCheckList As New ArrayList
+	myCheckList.Add("")
+	myCheckList.Add("CB")
+	myCheckList.Add("JB")
+	myCheckList.Add("JBB-1")
+	myCheckList.Add("JBB-2")
+	myCheckList.Add("JPB")
+	myCheckList.Add("JSB1")
+	myCheckList.Add("JSB2")
+	myCheckList.Add("JSB3")
+	myCheckList.Add("JSB4")
+	myCheckList.Add("JSK")
+	myCheckList.Add("JSK300")
+	myCheckList.Add("JSK450")
+	myCheckList.Add("PSB")
+	myCheckList.Add("JGB")
+	myCheckList.Add("JGB-C")
+	
+	For i = myCheckList.Count - 1 To 0 Step -1
+		If iProperties.Value("Custom", "TYPEOFBRIDGE") = myCheckList.Item(i) Then
+			MessageBox.Show("Bridgetypes were updated on 26-04-2023." _
+				& vbLf &"This model uses a discontinued bridgetype." _
+				& vbLf & "Please run update 'OLD CAD Model'-rule and select another bridgetype using the project properties rule", "Discontinued bridgetype", MessageBoxButtons.OK, MessageBoxIcon.Hand, MessageBoxDefaultButton.Button1)
+		End If
+	Next
+'End If
+End If
+Catch 
+	''If parameter does not exist, don't do anything
+	''Testing message box
+	'MessageBox.Show("No bridgetype found", "My iLogic Dialog", MessageBoxButtons.OK, MessageBoxIcon.Hand, MessageBoxDefaultButton.Button1)
+End Try

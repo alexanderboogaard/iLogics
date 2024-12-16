@@ -1,0 +1,54 @@
+﻿Sub Main()
+	undoDoc = ThisApplication.ActiveDocument
+	oNamer = "Flush assembly"
+	Dim UNDO As Transaction 
+	UNDO = ThisApplication.TransactionManager.StartTransaction(undoDoc, oNamer)
+    
+	On Error GoTo StopRule
+	
+    Dim oAsmCompDef As Inventor.ComponentDefinition
+    If ThisApplication.ActiveDocumentType = Inventor.DocumentTypeEnum.kAssemblyDocumentObject Then
+        oAsmCompDef = CType(ThisApplication.ActiveDocument, Inventor.AssemblyDocument).ComponentDefinition
+
+
+        For i = 1 To 100
+            Dim compOcc1 As ComponentOccurrence
+            compOcc1 = ThisApplication.CommandManager.Pick(SelectionFilterEnum.kAssemblyOccurrenceFilter, "Select component to constrain part to")
+            Dim compOcc2 As ComponentOccurrence
+            compOcc2 = ThisApplication.CommandManager.Pick(SelectionFilterEnum.kAssemblyOccurrenceFilter, "Select component to constrain")
+
+            Dim oWorkPlaneYZ1, oWorkPlaneYZ2, oWorkPlaneXZ1, oWorkPlaneXZ2, oWorkPlaneXY1, oWorkPlaneXY2 As WorkPlane
+            oWorkPlaneYZ1 = compOcc1.Definition.WorkPlanes("YZ Plane")
+            oWorkPlaneYZ2 = compOcc2.Definition.WorkPlanes("YZ Plane")
+            oWorkPlaneXZ1 = compOcc1.Definition.WorkPlanes("XZ Plane")
+            oWorkPlaneXZ2 = compOcc2.Definition.WorkPlanes("XZ Plane")
+            oWorkPlaneXY1 = compOcc1.Definition.WorkPlanes("XY Plane")
+            oWorkPlaneXY2 = compOcc2.Definition.WorkPlanes("XY Plane")
+
+            Dim oProxyPlaneYZ1 As WorkPlaneProxy
+            compOcc1.CreateGeometryProxy(oWorkPlaneYZ1, oProxyPlaneYZ1)
+            Dim oProxyPlaneYZ2 As WorkPlaneProxy
+            compOcc2.CreateGeometryProxy(oWorkPlaneYZ2, oProxyPlaneYZ2)
+            Dim oProxyPlaneXZ1 As WorkPlaneProxy
+            compOcc1.CreateGeometryProxy(oWorkPlaneXZ1, oProxyPlaneXZ1)
+            Dim oProxyPlaneXZ2 As WorkPlaneProxy
+            compOcc2.CreateGeometryProxy(oWorkPlaneXZ2, oProxyPlaneXZ2)
+            Dim oProxyPlaneXY1 As WorkPlaneProxy
+            compOcc1.CreateGeometryProxy(oWorkPlaneXY1, oProxyPlaneXY1)
+            Dim oProxyPlaneXY2 As WorkPlaneProxy
+            compOcc2.CreateGeometryProxy(oWorkPlaneXY2, oProxyPlaneXY2)
+
+            Dim oAConstraint1 As MateConstraint
+            Dim oAConstraint2 As FlushConstraint
+            oAConstraint2 = oAsmCompDef.Constraints.AddFlushConstraint(oProxyPlaneYZ1, oProxyPlaneYZ2, 0)
+            oAConstraint2 = oAsmCompDef.Constraints.AddFlushConstraint(oProxyPlaneXZ1, oProxyPlaneXZ2, 0)
+            oAConstraint2 = oAsmCompDef.Constraints.AddFlushConstraint(oProxyPlaneXY1, oProxyPlaneXY2, 0)
+
+        Next
+    Else
+        MsgBox("Active document is no assembly")
+    End If
+	
+	StopRule :
+	UNDO.End
+End Sub

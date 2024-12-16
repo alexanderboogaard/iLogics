@@ -1,0 +1,273 @@
+﻿
+
+' [1] 18-07-2017 Dirk message box  YES/NO When it is a shrinkwrap to determine weigth anyway + check if weight is 0 and give message
+'16-10-2020 AB - Check if status is "IN WORK", if not than exit rule, because parameters can't be edited if not "IN WORK"
+
+
+Sub Main()
+Break
+        Try
+            Dim Invapp As Inventor.Application
+            Invapp = ThisApplication
+
+            Dim docFile As AssemblyDocument
+            docFile = ThisDoc.Document
+
+            Dim AllOcc As ComponentOccurrences
+            AllOcc = docFile.ComponentDefinition.occurrences
+
+            Dim Occ As ComponentOccurrence
+
+            Dim customProp As PropertySet
+            Dim compDef As Inventor.ComponentDefinition
+            Dim invDoc As Inventor.Document
+            Dim sum As Double
+            Dim DocName As String
+            Dim TempoDoc As Document
+            Dim WeigthsAreNull(200) As String
+            Dim ErrorComponents As String
+            Dim i As Integer
+            i = 0
+            F = 0
+            sum = 0
+            ErrorCount = 0
+            ErrorComponents = vbCrLf
+            iProperties.Value("Custom", "WEIGHT") = 0
+
+
+
+            For Each Occ In AllOcc
+                If Occ.BOMStructure <> 51972 Then '51972 = reference
+                    If Occ.IsSubstituteOccurrence = False Then
+                        Try
+                            If Occ.Suppressed = False Then
+                                compDef = Occ.Definition
+                                invDoc = compDef.Document
+                                customProp = invDoc.PropertySets.Item("Inventor User Defined Properties")
+                                If customProp.Item("WEIGHT").Value = 0 Then
+                                    WeigthsAreNull(i) = Occ.ReferencedDocumentDescriptor.DisplayName
+                                    i = i + 1
+                                Else
+                                    'MessageBox.Show(customProp.Item("WEIGHT").Value, "Title")
+                                    sum = sum + customProp.Item("WEIGHT").Value
+                                End If
+                            Else
+                                If F = 0 Then
+                                    '           Dim Answer As String
+                                    '           Dim MyNote As String
+                                    '        
+                                    '           'Place your text here
+                                    '           MyNote = "This model is a shrinkwrap, therefore the weight can only be determined with this rule. Click 'Yes' to get the weight (can take a long time for large models) or 'No' to skip determining the weight"
+                                    '        
+                                    '           'Display MessageBox
+                                    '           Answer = MsgBox(MyNote, vbQuestion + vbYesNo, "Failed to determine weight")
+                                    '           
+                                    '           If Answer = vbYes Then
+                                    F = 1
+                                    '           Else
+                                    '           Exit For
+                                    '           End If
+                                End If
+                                DocName = Occ.ReferencedDocumentDescriptor.FullDocumentName
+                                TempoDoc = ThisApplication.Documents.Open(DocName, False)
+                                customProp = TempoDoc.PropertySets.Item("Inventor User Defined Properties")
+
+                                If customProp.Item("WEIGHT").Value = 0 Then
+                                    WeigthsAreNull(i) = Occ.ReferencedDocumentDescriptor.DisplayName
+                                    i = i + 1
+                                Else
+                                    sum = sum + customProp.Item("WEIGHT").Value
+                                End If
+
+                            End If
+
+                        Catch
+                            If InStr(ErrorComponents, Occ.Definition.Document.DisplayName) = 0 Then
+                                ErrorCount = ErrorCount + 1
+                                ErrorComponents = ErrorComponents + Occ.Definition.Document.DisplayName & vbCrLf
+                            End If
+                        End Try
+
+                    Else
+                    End If
+                End If
+            Next
+
+            If ErrorCount <> 0 Then
+                MessageBox.Show("Can't get weight of " & ErrorComponents & "because of an unknown error. Total weight of the assembly will be wrong! Contact Dirk to solve the issue.", "Title")
+            End If
+
+
+            Dim StringNullList() As Object
+
+            If i > 0 Then
+                'eliminateDuplicate
+
+                Dim dublicates(100) As Object
+                Dim TotalString As String
+                TotalString = ""
+                p = 0
+                dupArrIndex = -1
+
+                For j = 0 To i
+
+                    dupBool = False
+
+                    For o = 0 To dupArrIndex
+
+                        If WeigthsAreNull(j) = dublicates(o) Then
+                            dupBool = True
+                        End If
+                    Next o
+
+                    If dupBool = False Then
+                        dupArrIndex = dupArrIndex + 1
+
+                        dublicates(dupArrIndex) = WeigthsAreNull(j)
+                    End If
+
+                Next j
+
+                For q = 0 To dupArrIndex - 1
+                    TotalString = dublicates(q) + ", " + TotalString
+                Next q
+
+                MsgBox(("The weight of " + TotalString + " is 0, please check and update the weight!"))
+
+            End If
+
+
+            iProperties.Value("Custom", "WEIGHT") = Round(sum, 1)
+            '-------------------------------------------------------------------------------------------------------------------------
+
+
+
+            Try
+                TryLength = iProperties.Value("Custom", "MAINPROFILE")
+            Catch
+                iProperties.Value("Custom", "MAINPROFILE") = ""
+            End Try
+
+
+            Try
+                TryLength = iProperties.Value("Custom", "PTC_WM_NAME")
+            Catch
+                iProperties.Value("Custom", "PTC_WM_NAME") = "Temp"
+            End Try
+
+
+            Try
+                TryLength = iProperties.Value("Custom", "PTC_WM_NUMBER")
+            Catch
+                iProperties.Value("Custom", "PTC_WM_NUMBER") = "Temp.Not"
+            End Try
+
+            Try
+                TryLength = iProperties.Value("Custom", "PAINTAREA")
+            Catch
+                iProperties.Value("Custom", "PAINTAREA") = ""
+            End Try
+
+            Dim oAsmDoc As AssemblyDocument
+            Dim oMyParameter As UserParameters
+            oAsmDoc = ThisDoc.Document
+            oMyParameter = oAsmDoc.ComponentDefinition.Parameters.UserParameters
+
+            Try
+                TryLength = Parameter("JBCONSERVATION")
+            Catch
+                oParameter = oMyParameter.AddByValue("JBCONSERVATION", "None", UnitsTypeEnum.kTextUnits)
+                MultiValue.SetList("JBCONSERVATION", "None", "Hot dip galvanised", "Painted", "Sherardised", "TSA", "TS ZnAl 85-15", "Zinc plated (electrolytic)")
+            End Try
+
+            Try
+                TryLength = Parameter("JBEXECUTIONCLASS")
+            Catch
+                oParameter = oMyParameter.AddByValue("JBEXECUTIONCLASS", "", UnitsTypeEnum.kTextUnits)
+                MultiValue.SetList("JBEXECUTIONCLASS", "", "EXC 1", "EXC 2", "EXC 3", "EXC 4")
+            End Try
+
+            Try
+                TryLength = Parameter("JBSORT")
+            Catch
+                oParameter = oMyParameter.AddByValue("JBSORT", "", UnitsTypeEnum.kTextUnits)
+                MultiValue.SetList("JBSORT", "", "Abutment", "Balance beam", "Bearing", "Bracing", "Bridge section", "Cable bracket", "Clamp", "Cover", "Deck", "Fastener", "Footwalk", "Guardrail", "Launching", "Lifting", "Panel", "Pillar", "Pin", "Plate", "Platform", "Profile", "Ramp", "Reinforcement", "Screen", "Seismic Restraint", "Stair", "Support beam", "Tool", "Transom", "U-frame", "Water management")
+            End Try
+
+
+            Try
+                TryLength = Parameter("JBMaterial")
+            Catch
+                oParameter = oMyParameter.AddByValue("JBMaterial", "", UnitsTypeEnum.kTextUnits)
+                MultiValue.SetList("JBMaterial", "", "Undefined", "4", "8", "12", "4.6", "8.8", "10.9", "10HV", "12.9", "140HV", "200HV", "350+80 HV30", "34CrNiMo6V", "35Mn6No3", "42CrMo4", "42CrMo4+QT", "708M40", "AL99.5 HH", "AlMg1 H14/H24", "AlMg3", "AlMg3 HH", "AlMg4.5 MN", "AlMgSi0.5", "AlMgSi1", "C10", "C22N", "C25/30", "C28/35", "CR", "DX51+Z275", "E470", "Hardox 400", "HDPE", "LDPE", "PE-HM", "Pinewood", "Plywood", "PTFE", "Polyethyleenterefalaat (PET)", "S235", "S235JR", "S235JRH", "S235J0", "S235J2", "S275", "S275JR", "S275J0", "S275J0H", "S275J2", "S275N", "S275NL", "S275M", "S275ML", "S355", "S355JR", "S355J0", "S355J2", "S355J2H", "S355K2", "S355N", "S355NL", "S355M", "S355ML", "S420", "S420N", "S355NH", "S420NL", "S420M", "S420ML", "S460", "S460N", "S460NL", "S460M", "S460MC", "S460ML", "SAPELE", "	X2 CrNiMo 17 12 2 (316L)", "X5 CrNi 18 10", "X5 CrNiMo 17 12 2", "X6 CrNi 18 10", "X6 CrNiMo 17 12 2", "TECLITE100M")
+            End Try
+
+            Try
+                TryLength = Parameter("BOMStrucType")
+            Catch
+                oParameter = oMyParameter.AddByValue("BOMStrucType", "Phantom", UnitsTypeEnum.kTextUnits)
+                MultiValue.SetList("BOMStrucType", "Separable", "Phantom", "Reference", "Inseparable")
+            End Try
+
+
+
+            iProperties.Value("Project", "Part Number") = Left(iProperties.Value("Custom", "PTC_WM_NUMBER"), Len(iProperties.Value("Custom", "PTC_WM_NUMBER")) - 4)
+
+            iProperties.Value("Custom", "CONSERVATION") = Parameter("JBCONSERVATION")
+
+            iProperties.Value("Custom", "EXECUTIONCLASS") = Parameter("JBEXECUTIONCLASS")
+            If iProperties.Value("Custom", "EXECUTIONCLASS") = "" Then
+                iProperties.Value("Custom", "EXECUTIONCLASSNR") = ""
+                iProperties.Value("Custom", "EXECUTIONCLASSNR_NL") = ""
+            Else
+                iProperties.Value("Custom", "EXECUTIONCLASSNR") = "Execution class " + Right(Parameter("JBEXECUTIONCLASS"), 1) + " (EN 1090)"
+                iProperties.Value("Custom", "EXECUTIONCLASSNR_NL") = "Uitvoeringsklasse " + Right(Parameter("JBEXECUTIONCLASS"), 1) + " (EN 1090)"
+            End If
+
+
+
+            iProperties.Value("Custom", "JBPARTDESCRIPTION") = iProperties.Value("Project", "Description")
+
+            iProperties.Value("Custom", "MATERIAL") = Parameter("JBMaterial")
+
+            iProperties.Value("Custom", "SORT") = Parameter("JBSORT")
+
+            iProperties.Value("Summary", "Title") = iProperties.Value("Custom", "PTC_WM_NAME")
+
+
+            Try
+                ' Get part component definition
+                Dim oAsmCompDef As AssemblyComponentDefinition
+                oAsmCompDef = ThisDoc.Document.ComponentDefinition
+
+
+                Select Case Parameter("BOMStrucType")
+
+                    Case "Separable"
+                        'is normal document type
+                        oAsmCompDef.BOMStructure = "51970"
+                        iProperties.Value("Custom", "partType") = "separable"
+                    Case "Phantom"
+                        oAsmCompDef.BOMStructure = "51971"
+                        iProperties.Value("Custom", "partType") = "separable"
+
+                    Case "Reference"
+                        oAsmCompDef.BOMStructure = "51972"
+                        iProperties.Value("Custom", "partType") = "inseparable"
+                    Case "Purchased"
+                        oAsmCompDef.BOMStructure = "51973"
+'Not in USE
+                    Case "Inseparable"
+                        oAsmCompDef.BOMStructure = "51974"
+                        iProperties.Value("Custom", "partType") = "inseparable"
+                End Select
+
+            Catch
+            End Try
+
+            oAsmDoc = Nothing
+            oMyParameter = Nothing
+        Catch
+        End Try
+
+End Sub

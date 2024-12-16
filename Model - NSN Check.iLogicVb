@@ -1,0 +1,33 @@
+﻿Sub Main()
+	Break
+	If iProperties.Value("Custom", "PTC_WM_LIFECYCLE_STATE") = "IN WORK" Then
+		Try
+		'Dim TryNum As String = iProperties.Value("Custom", "PTC_WM_PART_NUMBER")
+		Dim TryNum As String = ThisDoc.FileName(False) 'without extension
+		If TryNum.StartsWith("J") Then 'Prevents code to run for PO, PR, AS, SA, MO etc.
+			Dim oFile As String = "C:\Users\" + System.Environment.UserName + "\Janson Bridging BV\Engineering Janson Bridging - Inventor Janson setting\Content Center Files\Libraries\NSN_Inventor.xlsx"
+			GoExcel.Open(oFile)
+			i = GoExcel.FindRow(oFile, "Elements", "Number", "=", iProperties.Value("Custom", "PTC_WM_PART_NUMBER"))
+			If i = -1 Then
+			Exit Sub
+			Else
+			Try
+				TryLength = iProperties.Value("Custom", "NSN")
+			Catch
+				iProperties.Value("Custom", "NSN") = ""
+			End Try
+			iProperties.Value("Custom", "NSN") = GoExcel.CellValue(oFile, "Elements", "B" & i)
+			GoExcel.CellValue(oFile, "Elements", "C" & i) = "1" 'Makes it easier to check which files need to be done
+			GoExcel.Save
+			GoExcel.Close
+			ThisDoc.Save
+		End If
+		Else
+			Exit Sub
+		End If
+		Catch
+		End Try
+	Else
+		Exit Sub
+	End if
+End Sub

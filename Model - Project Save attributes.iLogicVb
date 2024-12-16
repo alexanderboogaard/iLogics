@@ -1,0 +1,36 @@
+﻿Sub Main()
+    ''Update Parameters from Form dropdowns
+    iProperties.Value("Custom", "PROJECTOFFICE") = Parameter("office")
+    iProperties.Value("Custom", "TYPEOFBRIDGE") = Parameter("type_of_bridge")
+    iProperties.Value("Custom", "CONFIGURATION") = Parameter("configuration")
+    iProperties.Value("Custom", "EXTERIORFOOTWALK") = Parameter("footwalk")
+    iProperties.Value("Custom", "LOAD") = Parameter("loadtype")
+    iProperties.Value("Custom", "REGULATION") = Parameter("regulation")
+    iProperties.Value("Custom", "CONSEQUENCECLASS") = Parameter("consequence")
+    iProperties.Value("Custom", "EXECUTIONCLASS") = Parameter("execution")
+    If iProperties.Value("Custom", "EXECUTIONCLASS") = " " Then
+        iProperties.Value("Custom", "EXECUTIONCLASSNR") = ""
+    Else
+        iProperties.Value("Custom", "EXECUTIONCLASSNR") = Right(iProperties.Value("Custom", "EXECUTIONCLASS"), 1)
+    End If
+
+    Dim guardrail As String = CStr(Parameter("guardrail")).Replace(" ", "_")
+    iProperties.Value("Custom", "GUARDRAILSYSTEM") = guardrail
+
+    ''Check if all required items are filled in
+    iLogicVb.RunExternalRule("Parameters - Project attributes check")
+    
+    ''Check if new project and if so that entered projectnumber is correct
+    If Parameter("new_doc") = True Then
+        Question = MessageBox.Show("The projectnumber you entered is " + iProperties.Value("Project", "Part Number") + ". Is this correct?", "Projectnumber", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button1)
+        If Question = vbNo Then
+            Return
+        End If
+    End If
+
+    If ThisDoc.Document.FullFileName = "" Then
+        ThisDoc.Document.FullFileName = iProperties.Value("Project", "Part Number") + ".iam"
+    End If
+
+    Parameter("new_doc") = False
+End Sub

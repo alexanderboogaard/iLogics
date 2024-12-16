@@ -1,0 +1,26 @@
+﻿Sub Main()
+    On Error GoTo StopRule
+
+    Dim AccArea As Double
+    AccArea = 0
+
+    For i = 1 To 100
+        Dim faceOcc1 As Face
+        faceOcc1 = ThisApplication.CommandManager.Pick(SelectionFilterEnum.kPartFaceFilter, "Select face to add to area accumulate")
+        AccArea = AccArea + (faceOcc1.Evaluator.Area)
+        j = i
+    Next
+
+StopRule:
+    If AccArea < 1 Then
+        MsgBox(AccArea * 100 & " mm^2" _
+        & vbLf & "(" & j & " faces)")
+    ElseIf AccArea > 10000 Then
+        MsgBox(AccArea / 10000 & " m^2" _
+        & vbLf & "(" & j & " faces)")
+    Else
+        MsgBox(AccArea & " cm^2" _
+        & vbLf & "(" & j & " faces)")
+    End If
+
+End Sub

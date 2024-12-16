@@ -1,0 +1,20 @@
+﻿Sub Main()
+    Dim oDoc As Document
+    oDoc = ThisDoc.Document
+
+    Dim oWorkPlane As WorkPlane
+    Dim oWorkAxis As WorkAxis
+    Dim oWorkPoint As WorkPoint
+
+    For Each oWorkPlane In oDoc.ComponentDefinition.WorkPlanes
+        oWorkPlane.Visible = False
+    Next
+
+    For Each oWorkAxis In oDoc.ComponentDefinition.WorkAxes
+        oWorkAxis.Visible = False
+    Next
+
+    For Each oWorkPoint In oDoc.ComponentDefinition.WorkPoints
+        oWorkPoint.Visible = False
+    Next
+End Sub

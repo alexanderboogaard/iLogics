@@ -1,0 +1,41 @@
+﻿'24-06-2021 - AB - Removed line regarding execution class, because this is about weights
+Sub Main()
+	Break
+    Try
+        docFile = ThisDoc.Document
+        Dim AllOcc As ComponentOccurrences
+        AllOcc = docFile.ComponentDefinition.occurrences
+        Dim Occ As ComponentOccurrence
+
+        Dim customProp As PropertySet
+        Dim compDef As Inventor.ComponentDefinition
+        Dim invDoc As Inventor.Document
+        Dim sum As Double
+
+        sum = 0
+        iProperties.Value("Custom", "WEIGHT") = 0
+        For Each Occ In AllOcc
+
+            If Occ.IsSubstituteOccurrence = False Then
+                If Occ.suppressed = False Then
+                    compDef = Occ.Definition
+                    invDoc = compDef.Document
+                    customProp = invDoc.PropertySets.Item("Inventor User Defined Properties")
+                    If Occ.BOMStructure = 51972 Then '51972 = reference
+                        x = 0
+                    Else
+                        x = 1
+                    End If
+
+                    sum = sum + customProp.Item("WEIGHT").Value * x
+                Else
+                End If
+            Else
+            End If
+
+        Next
+
+        iProperties.Value("Custom", "WEIGHT") = Round(sum, 1)
+    Catch
+    End Try
+End Sub

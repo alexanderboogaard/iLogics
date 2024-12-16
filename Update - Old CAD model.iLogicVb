@@ -1,0 +1,746 @@
+﻿' [1] 24-07-2017 Dirk de codes samengevoegd to 1 code zonder externe code
+' [2] 16-02-2018 Dirk - Changed main. first choose type and then Depend on the choice of part run code + alway run clean code
+' [3] 11-05-2021 Alexander - Updated link to projectmodel and added iProperty to include PROJECTEPM
+' [4] 02-07-2021 Alexander - Update paramters projectmodel
+' [5] 09-08-2021 Alexander - Removed unused/commented code that has been here a long time + changed event triggers for part
+' [6] 12-07-2022 Alexander - Added empty drop down selections for CC, EXC and configuration for project assemblies
+
+Imports System.Collections.Generic
+
+Sub Main()
+
+	undoDoc = ThisDoc.Document
+	oNamer = "Update Old CAD model"
+	Dim UNDO As Transaction 
+	UNDO = ThisApplication.TransactionManager.StartTransaction(undoDoc, oNamer)
+	'Your iLogic code goes in here:
+	'-------------------------------------------------------------------------------------------------------------------------------------
+    Trace.WriteLine("Event Driven Rules Copy", "iLogic") 'debug 
+	Break
+
+    Dim oTemplate As String
+    Dim oTemplatePath As String = "C:\Users\" + System.Environment.UserName + "\Janson Bridging BV\Engineering Janson Bridging - Inventor Janson setting\Templates\"
+
+    Dim CExt As New ArrayList
+    CExt.Add("Plate - Sheetmetal")
+    'CExt.Add("Sheetmetal")
+    CExt.Add("Item")
+    CExt.Add("Profile")
+    CExt.Add("AS+MO+Bolted assembly")
+    CExt.Add("Weldment assembly")
+	CExt.Add("SA - subassembly BETA")
+    CExt.Add("Shrinkwrap")
+    CExt.Add("Fastener")
+    CExt.Add("Projectmodel")
+
+    CADtype = InputListBox("Choose CAD filetype", CExt, "Part", Title:="CAD filetype", ListName:="Available Standard filetypes")
+
+    If CADtype = "" Then 'Failed to select drawing
+        MessageBox.Show("Failed to select drawing type. Rule will abort", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error, MessageBoxDefaultButton.Button1)
+        Return
+    End If
+
+    'First run code for cleaning the model
+    CleanModel()
+
+    'Select template
+    Select Case CADtype
+        Case "Plate - Sheetmetal"
+            oTemplate = oTemplatePath + "Standard parts (plate).ipt"
+            MainAttributes()
+			NSN()
+        Case "Item"
+            oTemplate = oTemplatePath + "Standard parts (item).ipt"
+            MainAttributes()
+			NSN()
+        Case "Profile"
+            oTemplate = oTemplatePath + "CCTemplates\Profile.ipt"
+            MainAttributes()
+			NSN()
+        Case "AS+MO+Bolted assembly"
+            oTemplate = oTemplatePath + "AS+MO+Bolted assembly.iam"
+            MainAttributes()
+            UpdateAttributesMOModel()
+        Case "SA - subassembly BETA"
+            oTemplate = oTemplatePath + "BETA\SA - subassembly.iam"
+            MainAttributes()
+            UpdateAttributesSAModel()
+        Case "Weldment assembly"
+            oTemplate = oTemplatePath + "Weldment assembly.iam"
+            MainAttributes()
+			NSN()
+        Case "Shrinkwrap"
+            oTemplate = oTemplatePath + "Shrinkwrap.ipt"
+			Shrinkwrap_update()
+        Case "Fastener"
+            oTemplate = oTemplatePath + "CCTemplates\Fastener.ipt"
+            MainAttributes()
+			NSN()
+        Case "Projectmodel"
+            oTemplate = oTemplatePath + "Standard Project.iam"
+            UpdateAttributesProject()
+    End Select
+
+
+    'file to copy events to
+    oInput = ThisApplication.ActiveEditDocument.FullFileName
+    If oInput = "" Then 'catch a new file with no path
+        Return
+    End If
+
+    'file to copy events from
+    oTemplateDoc = ThisApplication.Documents.Open(oTemplate, False)
+    'CopyEventsToDocuments(oTemplateDoc)
+    CopyEventTriggers(oTemplateDoc)
+    oTemplateDoc.Close
+	
+	MessageBox.Show("Updating old CAD model finished", "Update finished", MessageBoxButtons.OK, MessageBoxIcon.None, MessageBoxDefaultButton.Button1)
+
+	'-------------------------------------------------------------------------------------------------------------------------------------
+	UNDO.End
+End Sub
+
+Sub CleanModel()
+
+    '----------------------------------------------------------------------------------------------------------------------------------
+    '--------------------------------Delete old user properties -----------------------------------------------------------------------
+    '----------------------------------------------------------------------------------------------------------------------------------
+
+    Dim MyArrayList As New ArrayList
+    ' MyArrayList.add("LENGTH")
+    MyArrayList.add("JBPARTDESCRIPTION")
+    MyArrayList.add("PAINTAREA")
+    MyArrayList.add("Bbox_x")
+    MyArrayList.add("Bbox_y")
+    MyArrayList.add("Bbox_z")
+    MyArrayList.add("Part")
+    MyArrayList.add("Part Name")
+    MyArrayList.add("WEIGHT")
+    MyArrayList.add("Standard")
+    'define custom property collection
+    oCustomPropertySet = ThisDoc.Document.PropertySets.Item("Inventor User Defined Properties")
+    'look at each property in the collection
+    For Each oCustProp In oCustomPropertySet
+        'check property name against the list you want to delete
+        If MyArrayList.Contains(oCustProp.Name) Then
+            'delete the custom iProperty
+            oCustProp.Delete
+        Else
+            'skip it
+        End If
+    Next
+
+    '----------------------------------------------------------------------------------------------------------------------------------
+    '--------------------------------Delete old user parameters -----------------------------------------------------------------------
+    '----------------------------------------------------------------------------------------------------------------------------------
+
+    Dim param As Parameter
+    Dim oDoc As Document
+    oDoc = ThisDoc.Document
+
+    Try
+        param = oDoc.ComponentDefinition.Parameters.Item("BOMStrucType")
+        param.Delete
+    Catch
+    End Try
+
+    Try
+        param = oDoc.ComponentDefinition.Parameters.Item("JBPAINTAREA")
+        param.Delete
+    Catch
+    End Try
+
+    Try
+        param = oDoc.ComponentDefinition.Parameters.Item("JBpartType")
+        param.Delete
+    Catch
+    End Try
+
+    '----------------------------------------------------------------------------------------------------------------------------------
+    '-------------------------------'Delete all rules ---------------------------------------------------------------------------------
+    '----------------------------------------------------------------------------------------------------------------------------------
+
+    Dim iLogicAuto As Object = iLogicVb.Automation
+    Dim ruleName As String
+    Dim rules As Object
+
+    For i = 0 To 1      'run twice
+        rules = iLogicAuto.rules(oDoc)
+        If Not (rules Is Nothing) Then
+            For Each rule In rules
+                ruleName = rule.Name
+                iLogicAuto.DeleteRule(oDoc, ruleName)
+            Next
+        End If
+    Next
+
+End Sub
+
+Sub UpdateAttributesMOModel()
+
+    Dim PRoAsmDoc As AssemblyDocument
+    Dim PRoMyParameter As UserParameters
+    PRoAsmDoc = ThisDoc.Document
+    PRoMyParameter = PRoAsmDoc.ComponentDefinition.Parameters.UserParameters
+
+    Try
+        TryLength = Parameter("width_bridge")
+    Catch 'If parameter does not exist, add it
+        PRoParameter = PRoMyParameter.AddByValue("width_bridge", 7000, UnitsTypeEnum.kMillimeterLengthUnits)
+    End Try
+
+    Try
+        TryLength = Parameter("Number_of_bays")
+    Catch 'If parameter does not exist, add it
+        PRoParameter = PRoMyParameter.AddByValue("number_of_bays", 7, UnitsTypeEnum.kUnitlessUnits)
+    End Try
+
+    Dim MyArrayListParameters As New ArrayList
+    MyArrayListParameters.add("CONSEQUENCECLASS")
+    MyArrayListParameters.add("JBPARTDESCRIPTION")
+    MyArrayListParameters.add("EXECUTIONCLASS")
+    MyArrayListParameters.add("LENGTH")
+    MyArrayListParameters.add("WEIGHT")
+    MyArrayListParameters.add("PTC_WM_PART_NUMBER")
+    MyArrayListParameters.add("PTC_WM_NAME")
+    MyArrayListParameters.add("PAINTAREA")
+
+    'look at each property in the collection
+    For Each oParameter In MyArrayListParameters
+        Try
+            TryLength = iProperties.Value("Custom", oParameter)
+        Catch 'If parameter does not exist, add it with an empty value
+            iProperties.Value("Custom", oParameter) = ""
+        End Try
+    Next
+
+    Parameter("BOMStrucType") = "Phantom"
+
+End Sub
+
+Sub UpdateAttributesSAModel()
+
+    Dim PRoAsmDoc As AssemblyDocument
+    Dim PRoMyParameter As UserParameters
+    PRoAsmDoc = ThisDoc.Document
+    PRoMyParameter = PRoAsmDoc.ComponentDefinition.Parameters.UserParameters
+
+    Dim MyArrayListParameters As New ArrayList
+    MyArrayListParameters.add("PTC_WM_PART_NUMBER")
+    MyArrayListParameters.add("PTC_WM_NAME")
+
+    'look at each property in the collection
+    For Each oParameter In MyArrayListParameters
+        Try
+            TryLength = iProperties.Value("Custom", oParameter)
+        Catch 'If parameter does not exist, add it with an empty value
+            iProperties.Value("Custom", oParameter) = ""
+        End Try
+    Next
+
+    Parameter("BOMStrucType") = "Separable"
+
+End Sub
+
+Sub UpdateAttributesProject()
+
+    Dim PRoAsmDoc As AssemblyDocument
+    Dim PRoMyParameter As UserParameters
+    PRoAsmDoc = ThisDoc.Document
+    PRoMyParameter = PRoAsmDoc.ComponentDefinition.Parameters.UserParameters
+
+      Dim MyArrayListParameters As New ArrayList
+    MyArrayListParameters.add("CONFIGURATION")
+    MyArrayListParameters.add("CONSEQUENCECLASS")
+    MyArrayListParameters.add("CUSTOMERNAME")
+    MyArrayListParameters.add("JBPARTDESCRIPTION")
+    MyArrayListParameters.add("EXECUTIONCLASS")
+    MyArrayListParameters.add("EXTERIORFOOTWALK")
+    MyArrayListParameters.add("GUARDRAILSYSTEM")
+    MyArrayListParameters.add("LENGTH")
+    MyArrayListParameters.add("LOAD")
+    MyArrayListParameters.add("NUMBEROFBAYS")
+    MyArrayListParameters.add("SPANS")
+    MyArrayListParameters.add("PROJECTLOCATION")
+    MyArrayListParameters.add("PROJECTOFFICE")
+    MyArrayListParameters.add("REGULATION")
+    MyArrayListParameters.add("TYPEOFBRIDGE")
+    MyArrayListParameters.add("WEIGHT")
+    MyArrayListParameters.add("WIDTH")
+    'MyArrayListParameters.add("PTC_WM_PART_NUMBER")
+    MyArrayListParameters.Add("PTC_WM_NAME")
+	MyArrayListParameters.Add("ADDITIONALCOMMENTS")
+
+
+    'look at each property in the collection
+    For Each oParameter In MyArrayListParameters
+        Try
+            TryLength = iProperties.Value("Custom", oParameter)
+        Catch 'If parameter does not exist, add it
+            iProperties.Value("Custom", oParameter) = ""
+        End Try
+    Next
+
+    Try
+        TryLength = iProperties.Value("Custom", "UPLOAD_SOFT_TYPE")
+    Catch
+        iProperties.Value("Custom", "UPLOAD_SOFT_TYPE") = "local.JansonBridging.PROJECTEPMDocument"
+    End Try
+
+    '-----------SLOPES------------------------------------------
+    Try
+        TryParam = Parameter("slope_input_unit")
+    Catch
+        PRoParameter = PRoMyParameter.AddByValue("slope_input_unit", "degrees", UnitsTypeEnum.kTextUnits)
+        MultiValue.SetList("slope_input_unit", "degrees", "percentage")
+		SlopeTransIn = Parameter("d4") / 1 deg 'Convert existing transversal slope to unitless
+		PRoParameter = PRoMyParameter.AddByValue("slope_trans_input", SlopeTransIn, UnitsTypeEnum.kUnitlessUnits)
+		SlopeLongIn = Parameter("d8") / 1 deg 'Convert existing longitudinal slope to unitless
+		PRoParameter = PRoMyParameter.AddByValue("slope_long_input",SlopeLongIn ,UnitsTypeEnum.kUnitlessUnits)
+    End Try
+
+    '-----------SLOPES END------------------------------------------	
+
+    '------------------------------------------------------------------------------------------------------------------------------------
+    '-----------------------------------------------Update Drop-down lists---------------------------------------------------------------
+    '------------------------------------------------------------------------------------------------------------------------------------
+
+    '-----------PROJECTOFFICE------------------------------------------
+     Try
+        TryParam = Parameter("office")
+        PRoParameter = PRoMyParameter.Item("office")
+        PRoParameter.delete
+    Catch
+       Try
+		Tryparam = iProperties.Value("Custom", "PROJECTOFFICE")
+		Catch
+		TryParam = ""
+		End Try
+    End Try
+    PRoParameter = PRoMyParameter.AddByValue("office", TryParam, UnitsTypeEnum.kTextUnits)
+    MultiValue.SetList("office", "Belgium", "France", "Germany", "International", "Italy", "JBBV", "Norway", "Poland", "Spain", "The Netherlands", "United Kingdom")
+    '-----------PROJECTOFFICE END------------------------------------------	
+
+    '-----------BRIDGETYPE------------------------------------------
+    Try
+        TryParam = Parameter("type_of_bridge")
+        PRoParameter = PRoMyParameter.Item("type_of_bridge")
+        PRoParameter.delete
+    Catch
+       Try
+		Tryparam = iProperties.Value("Custom", "TYPEOFBRIDGE")
+		Catch
+		TryParam = ""
+		End Try
+    End Try
+    PRoParameter = PRoMyParameter.AddByValue("type_of_bridge", TryParam, UnitsTypeEnum.kTextUnits)
+    MultiValue.SetList("type_of_bridge", "Acrow", "BB", "HGB", "JBB-3", "JCP", "JCS", "JGB-I", "JGB-P", "JMB-D", "JPB-P", "JPB-T", "JRB", "JSB-1", "JSB-2", "JSB-3", "JSB-4", "JSK-300", "JSK-450", "JTB-P", "JTB-T", "MU")
+    '-----------BRIDGETYPE END------------------------------------------	
+
+    '-----------CONFIGURATION------------------------------------------
+    Try
+        TryParam = Parameter("configuration")
+        PRoParameter = PRoMyParameter.Item("configuration")
+        PRoParameter.delete
+    Catch
+       Try
+		Tryparam = iProperties.Value("Custom", "CONFIGURATION")
+		Catch
+		TryParam = ""
+		End Try
+    End Try
+    PRoParameter = PRoMyParameter.AddByValue("configuration", TryParam, UnitsTypeEnum.kTextUnits)
+    MultiValue.SetList("configuration", "", "DD", "DDR1", "DDR1H", "DDR2", "DDR2H", "DS", "DSR1", "DSR1H", "DSR2", "DSR2H", "QD", "QDR4", "QDR4H", "QS", "QSR4", "QSR4H", "SD", "SDR", "SDRH", "SS", "SSR", "SSRH", "TD", "TDR2", "TDR2H", "TDR3", "TDR3H", "TS", "TSR1", "TSR2", "TSR2H", "TSR3", "TSR3H", "TT", "TTR1", "TSR2", "TSR2H", "TSR3", "TSR3H")
+    '-----------CONFIGURATION END------------------------------------------	
+
+    '-----------GUARDRAILSYSTEM------------------------------------------
+    Try
+        TryParam = Parameter("guardrail")
+        PRoParameter = PRoMyParameter.Item("guardrail")
+        PRoParameter.delete
+    Catch
+       Try
+		Tryparam = iProperties.Value("Custom", "GUARDRAILSYSTEM")
+		Catch
+		TryParam = ""
+		End Try
+    End Try
+    PRoParameter = PRoMyParameter.AddByValue("guardrail", TryParam, UnitsTypeEnum.kTextUnits)
+    MultiValue.SetList("guardrail", "BN4 Guardrail", "Half Step Barrier", "None", "Pedestrian Railing", "Super-Rail-BW Systeem")
+    '-----------GUARDRAILSYSTEM END------------------------------------------	
+
+    '-----------FOOTWALK------------------------------------------
+    Try
+        TryParam = Parameter("footwalk")
+        PRoParameter = PRoMyParameter.Item("footwalk")
+        PRoParameter.delete
+    Catch
+       Try
+		Tryparam = iProperties.Value("Custom", "EXTERIORFOOTWALK")
+		Catch
+		TryParam = ""
+		End Try
+    End Try
+    PRoParameter = PRoMyParameter.AddByValue("footwalk", TryParam, UnitsTypeEnum.kTextUnits)
+    MultiValue.SetList("footwalk", "1.0m - both sides", "1.0m - one side", "1.5m - both sides", "1.5m - one side", "2.0m - both sides", "2.0m - one side", "None")
+    '-----------FOOTWALK END------------------------------------------	
+
+    '-----------LOAD------------------------------------------
+    Try
+        TryParam = Parameter("loadtype")
+        PRoParameter = PRoMyParameter.Item("loadtype")
+        PRoParameter.delete
+    Catch
+       Try
+		Tryparam = iProperties.Value("Custom", "LOAD")
+		Catch
+		TryParam = ""
+		End Try
+    End Try
+    PRoParameter = PRoMyParameter.AddByValue("loadtype", TryParam, UnitsTypeEnum.kTextUnits)
+    MultiValue.SetList("loadtype", "Pedestrian", "Special vehicle", "Traffic")
+    '-----------LOAD END------------------------------------------	
+
+    '-----------REGULATION------------------------------------------
+    Try
+        TryParam = Parameter("regulation")
+        PRoParameter = PRoMyParameter.Item("regulation")
+        PRoParameter.delete
+    Catch
+       Try
+		Tryparam = iProperties.Value("Custom", "REGULATION")
+		Catch
+		TryParam = ""
+		End Try
+    End Try
+    PRoParameter = PRoMyParameter.AddByValue("regulation", TryParam, UnitsTypeEnum.kTextUnits)
+    MultiValue.SetList("regulation", "Aashto (specify edition in notes)", "DIN-1072", "DIN-FB", "Eurocode", "NEN", "Otherwise (specify regulation in notes)", "SIA 261")
+    '-----------REGULATION END------------------------------------------	
+
+    '-----------CC------------------------------------------
+    Try
+        TryParam = Parameter("consequence")
+        PRoParameter = PRoMyParameter.Item("consequence")
+        PRoParameter.delete
+    Catch
+       Try
+		Tryparam = iProperties.Value("Custom", "CONSEQUENCECLASS")
+		Catch
+		TryParam = ""
+		End Try
+    End Try
+    PRoParameter = PRoMyParameter.AddByValue("consequence", TryParam, UnitsTypeEnum.kTextUnits)
+    MultiValue.SetList("consequence", "", "CC1", "CC2", "CC3")
+    '-----------CC END------------------------------------------
+
+    '-----------EXC------------------------------------------
+    Try
+        TryParam = Parameter("execution")
+        PRoParameter = PRoMyParameter.Item("execution")
+        PRoParameter.delete
+    Catch
+       Try
+		Tryparam = iProperties.Value("Custom", "EXECUTIONCLASS")
+		Catch
+		TryParam = ""
+		End Try
+    End Try
+    PRoParameter = PRoMyParameter.AddByValue("execution", TryParam, UnitsTypeEnum.kTextUnits)
+    MultiValue.SetList("execution", "", "EXC 1", "EXC 2", "EXC 3", "EXC 4")
+    '-----------EXC END------------------------------------------	
+
+    '-----------NEWDOC------------------------------------------
+    Try
+        TryParam = Parameter("new_doc")
+        PRoParameter = PRoMyParameter.Item("new_doc")
+        PRoParameter.delete
+    Catch
+        TryParam = ""
+    End Try
+    PRoParameter = PRoMyParameter.AddByValue("new_doc", False, "BOOLEAN")
+
+    '-----------NEWDOC END------------------------------------------	
+
+    '------------------------------------------------------------------------------------------------------------------------------------
+    '-----------------------------------------------Remove parameters and attributes-----------------------------------------------------
+    '------------------------------------------------------------------------------------------------------------------------------------
+
+    '-----------JBCONSERVATION------------------------------------------
+    Try
+        TryParam = Parameter("JBCONSERVATION")
+        PRoParameter = PRoMyParameter.Item("JBCONSERVATION")
+        PRoParameter.delete
+    Catch
+    End Try
+    '-----------JBCONSERVATION END------------------------------------------
+
+    '-----------JBSORT----------------------------------------------
+    Try
+        TryParam = Parameter("JBSORT")
+        PRoParameter = PRoMyParameter.Item("JBSORT")
+        PRoParameter.delete
+    Catch
+    End Try
+    '-----------JBSORT END------------------------------------------
+
+    '-----------JBEXECUTIONCLASS----------------------------------------------
+    Try
+        TryParam = Parameter("JBEXECUTIONCLASS")
+        PRoParameter = PRoMyParameter.Item("JBEXECUTIONCLASS")
+        PRoParameter.delete
+    Catch
+    End Try
+    '-----------JBEXECUTIONCLASS END------------------------------------------
+
+    '-----------BOMStrucType_(documenttype assembly)---------------------------------------------
+    Try
+        TryParam = Parameter("BOMStrucType")
+        PRoParameter = PRoMyParameter.Item("BOMStrucType")
+        PRoParameter.delete
+    Catch
+    End Try
+    '-----------BOMStrucType END------------------------------------------
+
+    '-----------JBMaterial_(documenttype Assembly)--- Get materials from library------------------------------------------
+    Try
+        TryParam = Parameter("JBMaterial")
+        PRoParameter = PRoMyParameter.Item("JBMaterial")
+        PRoParameter.delete
+    Catch
+    End Try
+    '-----------JBMaterial  End------------------------------------------
+
+    '-----------width_bridge------------------------------------------
+    Try
+        TryParam = Parameter("width_bridge")
+        PRoParameter = PRoMyParameter.Item("width_bridge")
+        PRoParameter.delete
+    Catch
+    End Try
+    '-----------width_bridge  End------------------------------------------
+
+    '-----------Number_of_bays------------------------------------------
+    Try
+        TryParam = Parameter("number_of_bays")
+        PRoParameter = PRoMyParameter.Item("number_of_bays")
+        PRoParameter.delete
+    Catch
+    End Try
+    '-----------Number_of_bays  End------------------------------------------
+
+    'define list of custom properties to delete
+    Dim MyArrayList As New ArrayList
+    MyArrayList.Add("EXECUTIONCLASSNR_NL")
+    MyArrayList.Add("MAINPROFILE")
+    MyArrayList.add("MATERIAL")
+    MyArrayList.add("NUMBEROFBAYS")
+    MyArrayList.add("SORT")
+    MyArrayList.add("source")
+
+    'define custom property collection
+    oCustomPropertySet = ThisDoc.Document.PropertySets.Item("Inventor User Defined Properties")
+    'look at each property in the collection
+    For Each oCustProp In oCustomPropertySet
+        'check property name against the list you want to delete
+        If MyArrayList.Contains(oCustProp.name) Then
+            'delete the custom iProperty
+            oCustProp.Delete
+        Else
+            'skip it
+        End If
+    Next
+
+End Sub
+
+'Delete old custom iProperties ------------------------------------------------------------------
+Sub MainAttributes()
+
+    '------------------------------------------------------------------------------------------------------------------------------------
+    '-----------------------------------------------Update Drop-down lists---------------------------------------------------------------
+    '------------------------------------------------------------------------------------------------------------------------------------
+
+    Dim oMyParameter As UserParameters
+
+    If ThisDoc.Document.DocumentType = DocumentTypeEnum.kAssemblyDocumentObject Then
+        Dim oAsmDoc As AssemblyDocument
+        oAsmDoc = ThisDoc.Document
+        oMyParameter = oAsmDoc.ComponentDefinition.Parameters.UserParameters
+    Else
+        oDoc = ThisDoc.Document
+        oMyParameter = oDoc.ComponentDefinition.Parameters.UserParameters
+    End If
+	
+	'-----------PROJECT JB LOGO PART------------------------------------------
+	'define custom property collection
+	oCustomPropertySet = ThisDoc.Document.PropertySets.Item("Inventor User Defined Properties")
+	'look at each property in the collection
+	For Each oCustProp In oCustomPropertySet
+	'check for a property name that you don't want to delete
+		If oCustProp.name = "UPLOAD_SOFT_TYPE" Then
+		'delete the custom iProperty
+		oCustProp.Delete 
+		Else 
+		End If
+	Next
+	'-----------PROJECT JB LOGO PART END---------------------------------------
+    
+	'-----------JBCONSERVATION------------------------------------------
+    Try
+        TryParam = Parameter("JBCONSERVATION")
+        oParameter = oMyParameter.Item("JBCONSERVATION")
+        oParameter.delete
+    Catch
+        TryParam = ""
+    End Try
+    oParameter = oMyParameter.AddByValue("JBCONSERVATION", TryParam, UnitsTypeEnum.kTextUnits)
+    MultiValue.SetList("JBCONSERVATION", "None", "Hot dip galvanised", "Painted", "Painted (zinc silicate 40-80µm)", "Sherardised", "TSA", "TS ZnAl 85-15", "Weld primer", "Zinc plated (electrolytic)")
+    '-----------JBCONSERVATION END------------------------------------------
+
+    '-----------JBSORT----------------------------------------------
+    Try
+        TryParam = Parameter("JBSORT")
+        oParameter = oMyParameter.Item("JBSORT")
+        oParameter.delete
+    Catch
+        TryParam = ""
+    End Try
+    oParameter = oMyParameter.AddByValue("JBSORT", TryParam, UnitsTypeEnum.kTextUnits)
+    MultiValue.SetList("JBSORT", "", "Abutment", "Anti skid", "Balance beam", "Bearing", "Bracing", "Bridge section", "Cable bracket", "Clamp", "Cover", "Deck", "Fastener", "Footwalk", "Guardrail", "Launching", "Lifting", "Panel", "Pillar", "Pin", "Plate", "Platform", "Profile", "Ramp", "Reinforcement", "Screen", "Seismic Restraint", "Stair", "Sticker", "Support beam", "Tool", "Transom", "U-frame", "Water management")
+    '-----------JBSORT END------------------------------------------
+
+    '-----------JBEXECUTIONCLASS----------------------------------------------
+    Try
+        TryParam = Parameter("JBEXECUTIONCLASS")
+        oParameter = oMyParameter.Item("JBEXECUTIONCLASS")
+        oParameter.delete
+    Catch
+        TryParam = ""
+    End Try
+    oParameter = oMyParameter.AddByValue("JBEXECUTIONCLASS", TryParam, UnitsTypeEnum.kTextUnits)
+    MultiValue.SetList("JBEXECUTIONCLASS", "", "EXC 1", "EXC 2", "EXC 3", "EXC 4")
+    '-----------JBEXECUTIONCLASS END------------------------------------------
+
+    '-----------BOMStrucType_(documenttype part)---------------------------------------------
+    If ThisDoc.Document.DocumentType = DocumentTypeEnum.kPartDocumentObject Then
+        Try
+            TryParam = Parameter("BOMStrucType")
+            oParameter = oMyParameter.Item("BOMStrucType")
+            oParameter.delete
+        Catch
+            TryParam = "Component"
+        End Try
+        oParameter = oMyParameter.AddByValue("BOMStrucType", TryParam, UnitsTypeEnum.kTextUnits)
+        MultiValue.SetList("BOMStrucType", "Component", "Inseparable", "Phantom", "Reference")
+    End If
+    '-----------BOMStrucType END------------------------------------------
+
+    '-----------BOMStrucType_(documenttype assembly)---------------------------------------------
+    If ThisDoc.Document.DocumentType = DocumentTypeEnum.kAssemblyDocumentObject Then
+        Try
+            TryParam = Parameter("BOMStrucType")
+            oParameter = oMyParameter.Item("BOMStrucType")
+            oParameter.delete
+        Catch
+            TryParam = "Inseparable"
+        End Try
+        oParameter = oMyParameter.AddByValue("BOMStrucType", TryParam, UnitsTypeEnum.kTextUnits)
+        MultiValue.SetList("BOMStrucType", "Separable", "Phantom", "Reference", "Inseparable")
+    End If
+    '-----------BOMStrucType END------------------------------------------
+
+    '-----------JBMaterial_(documenttype Assembly)--- Get materials from library------------------------------------------
+    If ThisDoc.Document.DocumentType = DocumentTypeEnum.kAssemblyDocumentObject Then
+        Dim MatLibraryName As String = "Janson material Library"
+
+        ' Get the material library
+        Dim MatLib As AssetLibrary = Nothing
+        Try
+            MatLib = ThisApplication.AssetLibraries.Item(MatLibraryName)
+        Catch
+            MsgBox("Couldn't find a material library called '" & MatLibraryName,, "Error")
+            Exit Sub
+        End Try
+
+        Dim Materials As AssetsEnumerator = MatLib.MaterialAssets
+        Dim MaterialArray As New ArrayList
+
+        ' Write all the appearance names to an arraylist
+        For Each A As Asset In Materials
+            MaterialArray.Add(A.DisplayName)
+        Next
+
+        ' Attempt to set the value of a parameter containing the list of material names
+        Try
+            MultiValue.List("JBMaterial") = MaterialArray
+        Catch
+            ' parameter doesn't exist - create it
+            Dim oParam As Parameter = oMyParameter.AddByValue("JBMaterial", "", UnitsTypeEnum.kTextUnits)
+            MultiValue.List("JBMaterial") = MaterialArray
+        End Try
+    End If
+    '-----------JBMaterial  End------------------------------------------
+
+End Sub
+
+Sub NSN()
+	Try
+    	TryLength = iProperties.Value("Custom", "NSN")
+    Catch
+    	iProperties.Value("Custom", "NSN") = ""
+    End Try
+End Sub
+
+Sub Shrinkwrap_update()
+    Dim PRoPartDoc As Inventor.PartDocument
+    Dim PRoMyParameter As UserParameters
+    PRoPartDoc = ThisDoc.Document
+    PRoMyParameter = PRoPartDoc.ComponentDefinition.Parameters.UserParameters
+
+    Dim MyArrayListParameters As New ArrayList
+    MyArrayListParameters.Add("NO_PART")
+    
+    'look at each property in the collection
+    For Each oParameter In MyArrayListParameters
+        Try
+            TryLength = iProperties.Value("Custom", oParameter)
+        Catch 'If parameter does not exist, add it with an empty value
+			Dim no_part As Boolean = False
+            iProperties.Value("Custom", oParameter) = no_part
+        End Try
+    Next
+End Sub
+
+Sub CopyEventTriggers(ByVal oSourceDoc As Document)
+    Dim oSourceEventProps, oTargetEventProps As Inventor.PropertySet
+    Dim oSetName As String = "iLogicEventsRules"
+    Dim oInternalName As String = "{2C540830-0723-455E-A8E2-891722EB4C3E}"
+    Dim oTargetDoc As Document = ThisDoc.Document
+	
+	If Not oTargetDoc.PropertySets.PropertySetExists(oInternalName, oTargetEventProps) Then
+		oTargetEventProps = oTargetDoc.PropertySets.Add(oSetName, oInternalName)
+	End If
+
+    Try
+        oSourceEventProps = oSourceDoc.PropertySets.Item(oSetName)
+    Catch
+        oSourceEventProps = oSourceDoc.PropertySets.Item("_" & oSetName)
+    End Try
+
+    Try
+        oTargetEventProps = oTargetDoc.PropertySets.Item(oSetName)
+    Catch
+        oTargetEventProps = oTargetDoc.PropertySets.Item("_" & oSetName)
+    End Try
+
+    If oTargetEventProps Is Nothing Then
+        oTargetEventProps = oTargetDoc.PropertySets.Add(oSetName, oInternalName)
+    Else
+        oTargetEventProps.Delete
+        oTargetDoc.PropertySets.Add(oSetName, oInternalName)
+    End If
+
+    For Each oSourceProp As Inventor.Property In oSourceEventProps
+        oTargetEventProps.Add(oSourceProp.Value, oSourceProp.Name, oSourceProp.PropId)
+    Next
+End Sub
+

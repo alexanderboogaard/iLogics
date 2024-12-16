@@ -1,0 +1,58 @@
+﻿'This is only a backup file for the fasteners update rule
+
+Imports System.Collections.Generic
+
+Sub Main()
+	Break
+    Trace.WriteLine("Event Driven Rules Copy", "iLogic") 'debug 
+
+    Dim oTemplateDoc As Document
+    Dim oTemplate As String
+    Dim oTemplatePath As String = "C:\Users\" + System.Environment.UserName + "\Janson Bridging BV\Engineering Janson Bridging - Inventor Janson setting\Templates\"
+    oTemplate = oTemplatePath + "CCTemplates\Fastener.ipt"
+
+    'file to copy events to
+    oInput = ThisApplication.ActiveEditDocument.FullFileName
+    If oInput = "" Then 'catch a new file with no path
+        Return
+    End If
+
+    'open the template
+    oTemplateDoc = ThisApplication.Documents.Open(oTemplate, False)
+    CopyEventTriggers(oTemplateDoc)
+    oTemplateDoc.Close
+End Sub
+
+Sub CopyEventTriggers(ByVal oSourceDoc As Document)
+    Dim oSourceEventProps, oTargetEventProps As Inventor.PropertySet
+    Dim oSetName As String = "iLogicEventsRules"
+    Dim oInternalName As String = "{2C540830-0723-455E-A8E2-891722EB4C3E}"
+    Dim oTargetDoc As Document = ThisDoc.Document
+	
+	If Not oTargetDoc.PropertySets.PropertySetExists(oInternalName, oTargetEventProps) Then
+		oTargetEventProps = oTargetDoc.PropertySets.Add(oSetName, oInternalName)
+	End If
+
+    Try
+        oSourceEventProps = oSourceDoc.PropertySets.Item(oSetName)
+    Catch
+        oSourceEventProps = oSourceDoc.PropertySets.Item("_" & oSetName)
+    End Try
+
+    Try
+        oTargetEventProps = oTargetDoc.PropertySets.Item(oSetName)
+    Catch
+        oTargetEventProps = oTargetDoc.PropertySets.Item("_" & oSetName)
+    End Try
+
+    If oTargetEventProps Is Nothing Then
+        oTargetEventProps = oTargetDoc.PropertySets.Add(oSetName, oInternalName)
+    Else
+        oTargetEventProps.Delete
+        oTargetDoc.PropertySets.Add(oSetName, oInternalName)
+    End If
+
+    For Each oSourceProp As Inventor.Property In oSourceEventProps
+        oTargetEventProps.Add(oSourceProp.Value, oSourceProp.Name, oSourceProp.PropId)
+    Next
+End Sub

@@ -1,0 +1,95 @@
+﻿' iLogic script for Autodesk Inventor 2022
+' Renames and renumbers details and sections in a drawing
+Sub Main()
+	
+' Get the active document
+	Dim undoDoc = ThisApplication.ActiveDocument
+' Define the name for the undo operation
+	Dim oNamer = "Change color reference objects"
+' Start a new transaction for the undo operation
+	Dim UNDO As Transaction = ThisApplication.TransactionManager.StartTransaction(undoDoc, oNamer)
+	
+	Try
+	Dim oDoc As DrawingDocument
+	oDoc = ThisApplication.ActiveDocument
+	
+	Dim view_detail As Integer: view_detail = 10502
+	Dim view_section As Integer: view_section = 10503
+	
+' Ask the user for the starting detail and section
+	Dim startDetail As Integer = InputBox("Enter the starting detail number:", "Start Detail", 1)
+	Dim startSection As String = InputBox("Enter the starting section letter:", "Start Section", "a")
+	
+'Asc(startSection.ToLower()) converts the input letter to its ASCII value (using lowercase to handle both uppercase and lowercase input).
+'We subtract the ASCII value of ‘a’ to get the section counter directly.
+	startSection = startSection.ToLower()
+	
+'Dim sectionCounter As Integer = Asc(startSection.ToLower()) - Asc("a")
+	
+	
+	Dim detailCounter As Integer = startDetail
+	Dim sectionCounter As Integer = Asc(startSection)
+	
+	Dim ViewLetter as Array = Split("a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z", ",")
+	
+	If startSection = "a" Then sectionCounter = 0
+	If startSection = "b" Then sectionCounter = 1
+	If startSection = "c" Then sectionCounter = 2
+	If startSection = "d" Then sectionCounter = 3
+	If startSection = "e" Then sectionCounter = 4
+	If startSection = "f" Then sectionCounter = 5
+	If startSection = "g" Then sectionCounter = 6
+	If startSection = "h" Then sectionCounter = 7
+	If startSection = "i" Then sectionCounter = 8
+	If startSection = "j" Then sectionCounter = 9
+	If startSection = "k" Then sectionCounter = 10
+	If startSection = "l" Then sectionCounter = 11
+	If startSection = "m" Then sectionCounter = 12
+	If startSection = "n" Then sectionCounter = 13
+	If startSection = "o" Then sectionCounter = 14
+	If startSection = "p" Then sectionCounter = 15
+	If startSection = "q" Then sectionCounter = 16
+	If startSection = "r" Then sectionCounter = 17
+	If startSection = "s" Then sectionCounter = 18
+	If startSection = "t" Then sectionCounter = 19
+	If startSection = "u" Then sectionCounter = 20
+	If startSection = "v" Then sectionCounter = 21
+	If startSection = "w" Then sectionCounter = 22
+	If startSection = "x" Then sectionCounter = 23
+	If startSection = "y" Then sectionCounter = 24
+	If startSection = "z" Then sectionCounter = 25
+	
+' Loop through the drawing views
+	For i = 0 To 100
+		
+		Dim oView As DrawingView
+		oView = ThisApplication.CommandManager.Pick(SelectionFilterEnum.kDrawingViewFilter, "Select a detail or section to rename")
+		
+		If oView Is Nothing Then Exit Sub
+		
+' Rename details
+		If oView.ViewType = view_detail Then
+			Dim dtlName As Array = oView.Name.Split(" ")
+			oView.Name = dtlName(0)& " " & detailCounter
+			detailCounter += 1
+		End If
+		
+' Rename sections
+		If oView.ViewType = view_section Then
+			oView.Name = ViewLetter(sectionCounter)	
+			sectionCounter += 1
+		End If
+		
+	Next
+	
+	Catch ex As Exception
+' Show a message box with the exception message if an error occurs
+	MsgBox(ex.Message)
+	Finally
+' End the undo transaction
+	UNDO.End
+	End Try
+	
+end Sub
+
+

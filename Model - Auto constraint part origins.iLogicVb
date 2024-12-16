@@ -1,0 +1,65 @@
+﻿Sub Main()
+	undoDoc = ThisApplication.ActiveDocument
+	oNamer = "Model - Auto constraint part origins"
+	Dim UNDO As Transaction 
+	UNDO = ThisApplication.TransactionManager.StartTransaction(undoDoc, oNamer)
+    
+	On Error GoTo StopRule
+    Dim oAsmCompDef As Inventor.ComponentDefinition
+    If ThisApplication.ActiveDocumentType = Inventor.DocumentTypeEnum.kAssemblyDocumentObject Then
+        oAsmCompDef = CType(ThisApplication.ActiveDocument, Inventor.AssemblyDocument).ComponentDefinition
+
+        Dim compOcc1 As ComponentOccurrence
+        Dim compOcc2 As ComponentOccurrence
+        Dim oProxyPlane1, oProxyPlane2 As WorkPlaneProxy
+        Dim oAConstraint1 As MateConstraint
+        Dim oAConstraint2 As FlushConstraint
+
+        For i = 1 To 100
+            compOcc1 = ThisApplication.CommandManager.Pick(SelectionFilterEnum.kAssemblyOccurrenceFilter, "Select component to constrain part to")
+            compOcc2 = ThisApplication.CommandManager.Pick(SelectionFilterEnum.kAssemblyOccurrenceFilter, "Select component to constrain")
+
+            For j = 1 To 3
+                Select Case j
+                    Case 1
+                        Plane1 = "YZ Plane"
+                    Case 2
+                        Plane1 = "XZ Plane"
+                    Case 3
+                        Plane1 = "XY Plane"
+                End Select
+
+                compOcc1.CreateGeometryProxy(compOcc1.Definition.WorkPlanes(Plane1), oProxyPlane1)
+
+                For k = 1 To 3
+                    Select Case k
+                        Case 1
+                            Plane2 = "YZ Plane"
+                        Case 2
+                            Plane2 = "XZ Plane"
+                        Case 3
+                            Plane2 = "XY Plane"
+                    End Select
+
+                    compOcc2.CreateGeometryProxy(compOcc2.Definition.WorkPlanes(Plane2), oProxyPlane2)
+
+                    oProxyPlane1.GetPosition(ProxyOrigin1, ProxyX1, ProxyY1)
+                    oProxyPlane2.GetPosition(ProxyOrigin2, ProxyX2, ProxyY2)
+
+                    If Round(oProxyPlane1.Plane.Normal.AngleTo(oProxyPlane2.Plane.Normal) / PI * 100000.0) / 100000.0 = 0 Then
+                        oAConstraint2 = oAsmCompDef.Constraints.AddFlushConstraint(oProxyPlane1, oProxyPlane2, (Round(oProxyPlane1.Plane.Normal.AsVector.DotProduct(ProxyOrigin1.VectorTo(ProxyOrigin2)) * 1000) / 1000))
+                    ElseIf Round(oProxyPlane1.Plane.Normal.AngleTo(oProxyPlane2.Plane.Normal) / PI * 100000.0) / 100000.0 = 1 Then
+                        oAConstraint1 = oAsmCompDef.Constraints.AddMateConstraint(oProxyPlane1, oProxyPlane2, (Round(oProxyPlane1.Plane.Normal.AsVector.DotProduct(ProxyOrigin1.VectorTo(ProxyOrigin2)) * 1000) / 1000))
+                    Else
+                    End If
+
+                Next
+            Next
+			InventorVb.DocumentUpdate()
+        Next
+    Else
+        MsgBox("Active document is no assembly")
+    End If
+	stopRule :
+	UNDO.End
+End Sub

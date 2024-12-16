@@ -1,0 +1,97 @@
+﻿Sub Main()
+ 
+    ' Get the active document
+	Dim undoDoc = ThisApplication.ActiveDocument
+	' Define the name for the undo operation
+	Dim oNamer = "Change color reference objects"
+	' Start a new transaction for the undo operation
+	Dim UNDO As Transaction = ThisApplication.TransactionManager.StartTransaction(undoDoc, oNamer)
+    
+	Try
+	    ' Get the active drawing document and sheet
+		Dim oDrawDoc As DrawingDocument = ThisApplication.ActiveDocument
+		Dim oSheet As Sheet = oDrawDoc.ActiveSheet
+		' Create a new object collection
+		Dim oColl As ObjectCollection = ThisApplication.TransientObjects.CreateObjectCollection
+		
+		' Loop through the drawing views
+		For i = 0 To 100
+            ' Select a drawing view
+			Dim oDrawView As DrawingView = ThisApplication.CommandManager.Pick(kDrawingViewFilter, "Select a drawing view.")
+			' Exit if no drawing view is selected
+			If oDrawView Is Nothing Then Exit Sub
+	
+			' Get the document descriptor of the selected drawing view
+			Dim oDocDesc As DocumentDescriptor = oDrawView.ReferencedDocumentDescriptor
+			' Check if the referenced document is an assembly document
+			If oDocDesc.ReferencedDocumentType <> kAssemblyDocumentObject Then
+				MsgBox("The selected View must be Of an assembly.")
+				Exit Sub
+			End If
+	
+			' Get the assembly document
+			Dim oAssyDoc As AssemblyDocument = oDocDesc.ReferencedDocument
+			' Get all referenced documents of the assembly
+			Dim oRefDocs As DocumentsEnumerator = oAssyDoc.AllReferencedDocuments
+			' Loop through each referenced document
+			For Each oDoc As Inventor.Document In oRefDocs
+				' Check if the document display name starts with "REF-"
+				If oDoc.DisplayName.StartsWith("REF-") Then
+					' Get all occurrences of the referenced document in the assembly
+					Dim oOccEnum As ComponentOccurrencesEnumerator = oAssyDoc.ComponentDefinition.Occurrences.AllReferencedOccurrences(oDoc)
+					' Loop through each occurrence
+					For Each oOcc As ComponentOccurrence In oOccEnum
+						' Get all drawing curves of the occurrence
+						Dim oCurveUnum As DrawingCurvesEnumerator = oDrawView.DrawingCurves(oOcc)
+						' Loop through each drawing curve
+						For Each oCurve As DrawingCurve In oCurveUnum
+							' Loop through each segment of the drawing curve
+							For Each oSegment As DrawingCurveSegment In oCurve.Segments
+								' Add the segment to the object collection
+								Call oColl.Add(oSegment)
+							Next
+						Next
+					Next
+				End If
+			Next
+	
+			' Get all layers of the drawing document
+			Dim layers As LayersEnumerator = oDrawDoc.StylesManager.Layers
+			' Setup the "REF-objects" and "REF-leader" layers
+			Dim oblack As Layer = SetupLayer(layers, "REF-objects", 0, 128, 255, kDashedLineType, 0.007)
+			Dim oRefDim As Layer = SetupLayer(layers, "REF-leader", 0, 128, 255, kContinuousLineType, 0.007)
+	
+			' Change the layer of the object collection to the "REF-objects" layer
+			Call oSheet.ChangeLayer(oColl, oblack)
+			' Update the sheet
+			oSheet.Update
+		Next
+	Catch ex As Exception
+		' Show a message box with the exception message if an error occurs
+		MsgBox(ex.Message)
+	Finally
+		' End the undo transaction
+		UNDO.End
+	End Try
+
+End Sub
+
+Function SetupLayer(layers As LayersEnumerator, layerName As String, red As Integer, green As Integer, blue As Integer, lineType As LineTypeEnum, lineWeight As Double) As Layer
+	' Declare a layer variable
+	Dim layer As Layer = Nothing
+	Try
+		' Try to get the layer with the specified name
+		layer = layers.Item(layerName)
+	Catch ex As Exception
+		' If the layer does not exist, copy the first layer and rename it
+		layer = layers.Item(1).Copy(layerName)
+	End Try
+
+	' Set the color, line type, and line weight of the layer
+	layer.Color = ThisApplication.TransientObjects.CreateColor(red, green, blue)
+	layer.LineType = lineType
+	layer.LineWeight = lineWeight
+
+	' Return the layer
+	Return layer
+End Function

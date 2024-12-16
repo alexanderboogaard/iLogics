@@ -1,0 +1,21 @@
+﻿Sub Main()
+    On Error GoTo StopRule
+
+    Dim oDoc As DrawingDocument
+    oDoc = ThisDoc.Document
+
+    Dim oDrawingNote, oDrawingNote1 As DrawingNote
+    oDrawingNote1 = ThisApplication.CommandManager.Pick(SelectionFilterEnum.kDrawingNoteFilter, "Select first note to align other notes to")
+
+    Dim NotePoint, NotePoint1 As Point2d
+    NotePoint1 = oDrawingNote1.Position()
+
+    For i = 0 To 100
+        oDrawingNote = ThisApplication.CommandManager.Pick(SelectionFilterEnum.kDrawingNoteFilter, "Select note to align")
+        NotePoint = oDrawingNote.Position()
+        NotePoint.X = NotePoint1.X
+        oDrawingNote.Position = NotePoint
+    Next
+
+StopRule:
+End Sub

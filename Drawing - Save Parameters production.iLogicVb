@@ -1,0 +1,57 @@
+﻿'25-11-2021 - AB - Added data sheet to possibilities of PTC_WM_NAME, sot it will be updated automatically
+Sub Main()
+	Break
+    iProperties.Value("Custom", "DrawnedBy") = Parameter("AuthorDr")
+    iProperties.Value("Custom", "CheckedBy") = Parameter("CheckedBy")
+Try	
+	iProperties.Value("Custom", "ReleasedBy") = Parameter("Approver")
+Catch
+End try
+    'iLogicVb.UpdateWhenDone = True
+    'InventorVb.DocumentUpdate(True)
+
+
+    'Define the open document
+    openDoc = ThisDoc.Document
+    'Look at the model file referenced in the open document
+
+    If ThisDoc.ModelDocument IsNot Nothing Then
+        docFile = ThisDoc.ModelDocument
+
+        FNamePos = InStrRev(docFile.FullFileName, "\", -1)
+        docFName = Right(docFile.FullFileName, Len(docFile.FullFileName) - FNamePos)
+
+        If iProperties.Value("Custom", "PTC_WM_NAME") = "If not changed automatic the model part name  is taken over" Or iProperties.Value("Custom", "PTC_WM_NAME") = "" Or iProperties.Value("Custom", "PTC_WM_NAME") = "Data sheet" Then
+
+            If iProperties.Value("Custom", "DOCUMENTCATEGORY") = "Data sheet" Then
+                tmp_filename = Left(iProperties.Value(docFName, "Custom", "PTC_WM_NAME"), 2)
+                If tmp_filename = UCase(tmp_filename) Then
+                    docTitle = iProperties.Value(docFName, "Custom", "PTC_WM_NAME")
+                ElseIf tmp_filename = LCase(tmp_filename) Then
+                    docTitle = iProperties.Value(docFName, "Custom", "PTC_WM_NAME")
+                Else
+                    docTitle = LCase(tmp_filename) & Right(iProperties.Value(docFName, "Custom", "PTC_WM_NAME"), Len(iProperties.Value(docFName, "Custom", "PTC_WM_NAME")) - 2)
+                End If
+                iProperties.Value("Custom", "PTC_WM_NAME") = "Data sheet " & docTitle
+            Else
+                iProperties.Value("Custom", "PTC_WM_NAME") = iProperties.Value(docFName, "Custom", "PTC_WM_NAME")
+            End If
+
+        End If 'new 12-12-2017
+
+        iProperties.Value("Custom", "PTC_WM_NUMBER") = ThisDoc.FileName(True)
+        iProperties.Value("Custom", "PTC_WM_PART_NUMBER") = ThisDoc.FileName(False)
+        Try
+            iProperties.Value("Project", "Part Number") = Left(iProperties.Value("Custom", "PTC_WM_NUMBER"), Len(iProperties.Value("Custom", "PTC_WM_NUMBER")) - 4)
+        Catch
+        End Try
+
+    Else
+        'MessageBox.Show("This drawing has no model. Now the Name is not set in windchill. For changing the name rename file in Windchill", "Janson comment")
+        Return
+    End If
+
+
+    iLogicVb.UpdateWhenDone = True
+    InventorVb.DocumentUpdate(True)
+End Sub

@@ -1,0 +1,61 @@
+﻿Sub Main()
+    On Error GoTo StopRule
+
+    Dim oDoc As DrawingDocument
+    oDoc = ThisDoc.Document
+
+    Dim oCurve1, oCurve2 As DrawingCurveSegment
+    oCurve1 = ThisApplication.CommandManager.Pick(SelectionFilterEnum.kDrawingCurveSegmentFilter, "Select first line to align")
+    oCurve2 = ThisApplication.CommandManager.Pick(SelectionFilterEnum.kDrawingCurveSegmentFilter, "Select second line to align")
+
+    Dim oView1, oView2 As DrawingView
+    oView1 = oCurve1.Parent.Parent
+    oView2 = oCurve2.Parent.Parent
+
+    Dim Curve1Point1, Curve1Point2, Curve2Point1, Curve2Point2, View1Point, View2Point As Point2d
+    Curve1Point1 = oCurve1.StartPoint
+    Curve1Point2 = oCurve1.EndPoint
+    Curve2Point1 = oCurve2.StartPoint
+    Curve2Point2 = oCurve2.EndPoint
+
+    'Check for errors
+    If oView1.Name = oView2.Name And oView1.ReferencedDocumentDescriptor.DisplayName = oView2.ReferencedDocumentDescriptor.DisplayName Then
+        MessageBox.Show("Select lines from different views", "Align views error", MessageBoxButtons.OK, MessageBoxIcon.Hand, MessageBoxDefaultButton.Button1)
+        Exit Sub
+    ElseIf oView1.Aligned = True Or oView2.Aligned = True Then
+        MessageBox.Show("One or more views are already aligned. This might prevent the views from moving.", "Align views info", MessageBoxButtons.OK, MessageBoxIcon.Asterisk, MessageBoxDefaultButton.Button1)
+    End If
+
+    'First check if lines are horizontal or vertical and in the same orientation, then move view
+    If (Round((Curve1Point1.X - Curve1Point2.X) * 100000000.0) = 0 And Round((Curve2Point1.X - Curve2Point2.X) * 100000000.0) = 0) Then
+        MoveView = Curve1Point1.X - Curve2Point1.X
+        oView2Point = oView2.Position
+        oView2Point.X = oView2Point.X + MoveView
+        oView2.Position = oView2Point
+    ElseIf (Round((Curve1Point1.Y - Curve1Point2.Y) * 100000000.0) = 0 And Round((Curve2Point1.Y - Curve2Point2.Y) * 100000000.0) = 0) Then
+        MoveView = Curve1Point1.Y - Curve2Point1.Y
+        oView2Point = oView2.Position
+        oView2Point.Y = oView2Point.Y + MoveView
+        oView2.Position = oView2Point
+    Else
+        MessageBox.Show("Lines are not horizontal or vertical or not in the same orientation.", "Align views error", MessageBoxButtons.OK, MessageBoxIcon.Hand, MessageBoxDefaultButton.Button1)
+        MsgBox(Curve1Point1.Y - Curve1Point2.Y)
+        MsgBox(Curve2Point1.Y - Curve2Point2.Y)
+        Exit Sub
+    End If
+
+StopRule:
+End Sub
+' 
+' Private Function GetCurve1(ByVal oDoc As DrawingDocument) As DrawingCurveSegment
+' Dim Curve As DrawingCurveSegment
+' Curve = ThisApplication.CommandManager.Pick(SelectionFilterEnum.kDrawingCurveSegmentFilter, "Select first line to align")
+' Return Curve
+' End Function
+' 
+' Private Function GetCurve2(ByVal oDoc As DrawingDocument) As DrawingCurveSegment
+' Dim Curve As DrawingCurveSegment
+' Curve = ThisApplication.CommandManager.Pick(SelectionFilterEnum.kDrawingCurveSegmentFilter, "Select second line to align")
+' Return Curve
+' End Function
+

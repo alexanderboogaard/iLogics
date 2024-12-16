@@ -1,0 +1,42 @@
+﻿Sub Main()
+	Dim sh As Integer
+	sh = ThisDoc.Document.Sheets.Count
+
+	If sh > 1 Then
+        Try
+            If iProperties.Value("Custom", "MULTISHEETDWG") = 0 Then
+			i = MessageBox.Show("Your drawing contains multiple sheets. Is this done on purpose?", "Multisheet drawing detected", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button1)
+			If i = vbYes Then
+				iProperties.Value("Custom", "MULTISHEETDWG") = 1
+				Else
+					iProperties.Value("Custom", "MULTISHEETDWG") = 0
+			End If
+		End If 
+			
+        Catch
+			i = MessageBox.Show("Your drawing contains multiple sheets. Is this done on purpose?", "Multisheet drawing detected", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button1)
+			If i = vbYes Then
+				iProperties.Value("Custom", "MULTISHEETDWG") = 1
+				Else
+					iProperties.Value("Custom", "MULTISHEETDWG") = 0
+			End If
+		End Try
+	End If
+	
+	If sh = 1 Then
+		Dim MyArrayList As New ArrayList
+		MyArrayList.Add("MULTISHEETDWG")
+		'define custom property collection
+		oCustomPropertySet = ThisDoc.Document.PropertySets.Item("Inventor User Defined Properties")
+		'look at each property in the collection
+		    For Each oCustProp In oCustomPropertySet
+		        'check property name against the list you want to delete
+		        If MyArrayList.Contains(oCustProp.Name) Then
+		            'delete the custom iProperty
+		            oCustProp.Delete
+		        Else
+		            'skip it
+		        End If
+		    Next
+	End If
+End Sub

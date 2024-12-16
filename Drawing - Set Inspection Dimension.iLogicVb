@@ -1,0 +1,17 @@
+﻿Sub Main()
+
+    Dim oDoc As DrawingDocument
+    oDoc = ThisDoc.Document
+
+    Dim oSheet As Sheet
+    oSheet = oDoc.ActiveSheet
+
+    For i = 0 To 100
+
+        oDim = ThisApplication.CommandManager.Pick(SelectionFilterEnum.kDrawingDimensionFilter, "Select dimension")
+        oDim.SetInspectionDimensionData(79362, "", "")
+
+    Next
+
+End Sub
+

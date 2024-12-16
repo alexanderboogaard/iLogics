@@ -1,0 +1,195 @@
+﻿
+Sub Main()
+Break
+    If iProperties.Value("Custom", "PTC_WM_LIFECYCLE_STATE") = "RELEASED" Then
+        Return
+    ElseIf iProperties.Value("Custom", "PTC_WM_LIFECYCLE_STATE") <> "RELEASED" Then
+        Try
+
+
+            Dim Invapp As Inventor.Application
+            Invapp = ThisApplication
+
+            Dim docFile As AssemblyDocument
+            docFile = ThisDoc.Document
+
+            Dim AllOcc As ComponentOccurrences
+            AllOcc = docFile.ComponentDefinition.occurrences
+
+            Dim Occ As ComponentOccurrence
+
+            Dim customProp As PropertySet
+            Dim compDef As Inventor.ComponentDefinition
+            Dim invDoc As Inventor.Document
+            Dim sum As Double
+            Dim DocName As String
+            Dim TempoDoc As Document
+            Dim WeigthsAreNull(200) As String
+            Dim ErrorComponents As String
+            Dim i As Integer
+            i = 0
+            F = 0
+            sum = 0
+            ErrorCount = 0
+            ErrorComponents = vbCrLf
+            iProperties.Value("Custom", "WEIGHT") = 0
+
+
+
+            For Each Occ In AllOcc
+                If Occ.BOMStructure <> 51972 Then '51972 = reference
+                    If Occ.IsSubstituteOccurrence = False Then
+
+                        Try
+
+                            If Occ.Suppressed = False Then
+                                compDef = Occ.Definition
+                                invDoc = compDef.Document
+                                customProp = invDoc.PropertySets.Item("Inventor User Defined Properties")
+
+                                If customProp.Item("WEIGHT").Value = 0 Then
+                                    WeigthsAreNull(i) = Occ.ReferencedDocumentDescriptor.DisplayName
+                                    i = i + 1
+                                Else
+                                    sum = sum + customProp.Item("WEIGHT").Value
+                                End If
+                            Else
+
+                                DocName = Occ.ReferencedDocumentDescriptor.FullDocumentName
+                                TempoDoc = ThisApplication.Documents.Open(DocName, False)
+                                customProp = TempoDoc.PropertySets.Item("Inventor User Defined Properties")
+
+                                If customProp.Item("WEIGHT").Value = 0 Then
+                                    WeigthsAreNull(i) = Occ.ReferencedDocumentDescriptor.DisplayName
+                                    i = i + 1
+                                Else
+                                    sum = sum + customProp.Item("WEIGHT").Value
+                                End If
+
+                            End If
+
+                        Catch
+                            If InStr(ErrorComponents, Occ.Definition.Document.DisplayName) = 0 Then
+                                ErrorCount = ErrorCount + 1
+                                ErrorComponents = ErrorComponents + Occ.Definition.Document.DisplayName & vbCrLf
+                            End If
+                        End Try
+
+                    Else
+                    End If
+                End If
+            Next
+
+            If ErrorCount <> 0 Then
+                MessageBox.Show("Can't get weight of " & ErrorComponents & "because of an unknown error. Total weight of the assembly will be wrong!", "Title")
+            End If
+
+
+            Dim StringNullList() As Object
+
+            If i > 0 Then
+                'eliminateDuplicate
+
+                Dim dublicates(100) As Object
+                Dim TotalString As String
+                TotalString = ""
+                p = 0
+                dupArrIndex = -1
+
+                For j = 0 To i
+
+                    dupBool = False
+
+                    For o = 0 To dupArrIndex
+
+                        If WeigthsAreNull(j) = dublicates(o) Then
+                            dupBool = True
+                        End If
+                    Next o
+
+                    If dupBool = False Then
+                        dupArrIndex = dupArrIndex + 1
+
+                        dublicates(dupArrIndex) = WeigthsAreNull(j)
+                    End If
+
+                Next j
+
+                For q = 0 To dupArrIndex - 1
+                    TotalString = dublicates(q) + ", " + TotalString
+                Next q
+
+                MsgBox(("The weight of " + TotalString + " is 0, please check and update the weight!"))
+
+            End If
+
+
+            iProperties.Value("Custom", "WEIGHT") = Round(sum, 1)
+            '-------------------------------------------------------------------------------------------------------------------------
+
+            Try
+                TryLength = iProperties.Value("Custom", "PTC_WM_NAME")
+            Catch
+                iProperties.Value("Custom", "PTC_WM_NAME") = "Temp"
+            End Try
+
+
+            Try
+                TryLength = iProperties.Value("Custom", "PTC_WM_NUMBER")
+            Catch
+                iProperties.Value("Custom", "PTC_WM_NUMBER") = "Temp.Not"
+            End Try
+
+            Dim oAsmDoc As AssemblyDocument
+            Dim oMyParameter As UserParameters
+            oAsmDoc = ThisDoc.Document
+            oMyParameter = oAsmDoc.ComponentDefinition.Parameters.UserParameters
+
+            Try
+                TryLength = Parameter("BOMStrucType")
+            Catch
+                oParameter = oMyParameter.AddByValue("BOMStrucType", "Separable", UnitsTypeEnum.kTextUnits)
+                MultiValue.SetList("BOMStrucType", "Separable", "Phantom", "Reference", "Inseparable")
+            End Try
+
+            iProperties.Value("Project", "Part Number") = Left(iProperties.Value("Custom", "PTC_WM_NUMBER"), Len(iProperties.Value("Custom", "PTC_WM_NUMBER")) - 4)
+
+'            iProperties.Value("Custom", "JBPARTDESCRIPTION") = iProperties.Value("Project", "Description")
+
+            iProperties.Value("Summary", "Title") = iProperties.Value("Custom", "PTC_WM_NAME")
+
+
+            Try
+                ' Get part component definition
+                Dim oAsmCompDef As AssemblyComponentDefinition
+                oAsmCompDef = ThisDoc.Document.ComponentDefinition
+
+                Select Case Parameter("BOMStrucType")
+                    Case "Separable"
+                        'is normal document type
+                        oAsmCompDef.BOMStructure = "51970"
+                        iProperties.Value("Custom", "partType") = "separable"
+                    Case "Phantom"
+                        oAsmCompDef.BOMStructure = "51971"
+                        iProperties.Value("Custom", "partType") = "separable"
+                    Case "Reference"
+                        oAsmCompDef.BOMStructure = "51972"
+                        iProperties.Value("Custom", "partType") = "inseparable"
+                    Case "Purchased"
+                        oAsmCompDef.BOMStructure = "51973"
+                    Case "Inseparable"
+                        oAsmCompDef.BOMStructure = "51974"
+                        iProperties.Value("Custom", "partType") = "inseparable"
+                End Select
+
+            Catch
+            End Try
+
+            oAsmDoc = Nothing
+            oMyParameter = Nothing
+        Catch
+        End Try
+
+    End If
+
+End Sub

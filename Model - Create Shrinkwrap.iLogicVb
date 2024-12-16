@@ -1,0 +1,117 @@
+﻿Sub Main()
+
+    'Ask if it's ok to create shrinkwrap
+    i = MessageBox.Show("This rule will create a shrinkwrap of the assembly." _
+    & vbLf & "Make sure the assembly is saved with the correct number and name before running this rule." _
+    & vbLf & "This rule will also remove all existing subtitute level of details." _
+    & vbLf & "" _
+    & vbLf & "Press OK to start and Cancel to abort the process" _
+    , "Create shrinkwrap", MessageBoxButtons.OKCancel, MessageBoxIcon.Asterisk, MessageBoxDefaultButton.Button1)
+
+    If i = vbOK Then
+        'Nothing
+    Else
+        Exit Sub
+    End If
+
+    ' Set a reference to the active assembly document
+    Dim oDoc As AssemblyDocument
+    oDoc = ThisApplication.ActiveDocument
+
+    Dim oDef As AssemblyComponentDefinition
+    oDef = oDoc.ComponentDefinition
+
+    'Check if assembly is in substitute level of detail
+    Dim oLODRep, oActiveLODRep As LevelOfDetailRepresentation
+
+    oActiveLODRep = oDef.RepresentationsManager.ActiveLevelOfDetailRepresentation
+    If oActiveLODRep.LevelOfDetail = 56071 Then 'kSubstituteLevelOfDetail 
+        MessageBox.Show("The assembly is already in a substitute level of detail. Please activate a different level of detail before running this rule.", "Create Shrinkwrap Error", MessageBoxButtons.OK, MessageBoxIcon.Hand, MessageBoxDefaultButton.Button1)
+        Exit Sub
+    End If
+
+    'Delete existing substitute level of details
+    For Each oLODRep In oDef.RepresentationsManager.LevelOfDetailRepresentations
+        If oLODRep.LevelOfDetail = 56071 Then 'kSubstituteLevelOfDetail 
+            oLODRep.Delete
+        End If
+    Next
+
+    'Make all work features invisible
+    Dim oWorkPlane As WorkPlane
+    Dim oWorkAxis As WorkAxis
+    Dim oWorkPoint As WorkPoint
+
+    For Each oWorkPlane In oDoc.ComponentDefinition.WorkPlanes
+        oWorkPlane.Visible = False
+    Next
+    For Each oWorkAxis In oDoc.ComponentDefinition.WorkAxes
+        oWorkAxis.Visible = False
+    Next
+    For Each oWorkPoint In oDoc.ComponentDefinition.WorkPoints
+        oWorkPoint.Visible = False
+    Next
+
+    Dim objVis As ObjectVisibility
+    objVis = oDoc.ObjectVisibility
+    objVis.AllWorkFeatures = False
+    objVis.Sketches = False
+    objVis.Sketches3D = False
+
+    'Create variable for name of shrinkwrap as "<name> (Shrinkwrap)"
+    TempName = iProperties.Value("Custom", "PTC_WM_NAME")
+    NewName = TempName + " (Shrinkwrap)"
+
+    ' Create a new part document that will be the shrinkwrap substitute
+    Dim oPartDoc As PartDocument
+    oPartDoc = ThisApplication.Documents.Add(kPartDocumentObject, "Q:\ENG\Software\Inventor 2016\Templates\Shrinkwrap.ipt", False)
+
+    Dim oPartDef As PartComponentDefinition
+    oPartDef = oPartDoc.ComponentDefinition
+
+    Dim oDerivedAssemblyDef As DerivedAssemblyDefinition
+    oDerivedAssemblyDef = oPartDef.ReferenceComponents.DerivedAssemblyComponents.CreateDefinition(oDoc.FullDocumentName)
+
+    ' Set various shrinkwrap related options
+    oDerivedAssemblyDef.DeriveStyle = 80642                             'kDeriveAsSingleBodyNoSeams
+    oDerivedAssemblyDef.IncludeAllTopLevelWorkFeatures = 27138          'kDerivedExcludeAll
+    oDerivedAssemblyDef.IncludeAllTopLevelSketches = 27138              'kDerivedExcludeAll
+    oDerivedAssemblyDef.IncludeAllTopLeveliMateDefinitions = 27138      'kDerivedExcludeAll
+    oDerivedAssemblyDef.IncludeAllTopLevelParameters = 27138            'kDerivedExcludeAll
+    oDerivedAssemblyDef.ReducedMemoryMode = False
+    oDerivedAssemblyDef.IndependentSolidsOnFailedBoolean = True
+    oDerivedAssemblyDef.RemoveInternalVoids = False
+    Call oDerivedAssemblyDef.SetRemoveBySizeOptions(False)
+    Call oDerivedAssemblyDef.SetHolePatchingOptions(88321)              'kDerivedPatchNone
+    Call oDerivedAssemblyDef.SetRemoveByVisibilityOptions(88577, 0, True) 'kDerivedRemoveNone
+
+    ' Create the shrinkwrap component
+    Dim oDerivedAssembly As DerivedAssemblyComponent
+    oDerivedAssembly = oPartDef.ReferenceComponents.DerivedAssemblyComponents.Add(oDerivedAssemblyDef)
+
+    ' Save the part
+    Dim strSubstituteFileName As String
+    strSubstituteFileName = Left$(oDoc.FullFileName, Len(oDoc.FullFileName) - 4)
+    strSubstituteFileName = strSubstituteFileName & ".ipt"
+
+    'Set name to created variable string: "<name> (Shrinkwrap)"
+    Dim customPropSet As PropertySet
+    Dim propertyName As String
+    customPropSet = oPartDoc.PropertySets.Item("Inventor User Defined Properties")
+    propertyName = "PTC_WM_NAME"
+    customPropSet.Item(propertyName).Value = NewName
+
+    ThisApplication.SilentOperation = True
+    Call oPartDoc.SaveAs(strSubstituteFileName, False)
+    ThisApplication.SilentOperation = False
+
+    ' Create a substitute level of detail using the shrinkwrap part.
+    Dim oSubstituteLOD As LevelOfDetailRepresentation
+    oSubstituteLOD = oDef.RepresentationsManager.LevelOfDetailRepresentations.AddSubstitute(strSubstituteFileName)
+
+    ' Release reference of the invisibly opened part document.
+    oPartDoc.ReleaseReference
+
+    MessageBox.Show("Shrinkwrap created successfully!", "Shrinkwrap successfull", MessageBoxButtons.OK, MessageBoxIcon.Asterisk, MessageBoxDefaultButton.Button1)
+
+End Sub

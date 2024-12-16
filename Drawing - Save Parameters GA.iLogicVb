@@ -1,0 +1,20 @@
+﻿Sub Main()
+    oRefDoc = ThisDrawing.ModelDocument
+	Dim oPropValue As String 
+	
+	iProperties.Value("Custom", "DrawnedBy") = Parameter("AuthorDr")
+    iProperties.Value("Custom", "CheckedBy") = Parameter("CheckedBy") 
+   iProperties.Value("Custom", "DOCUMENTCATEGORY") = Parameter("DOCUMENTCATEGORY")
+try
+	iProperties.Value("Custom", "ReleasedBy") = Parameter("Approver")
+catch
+end try	
+	'iProperties.Value("Project", "Part Number") = Left(iProperties.Value("Custom", "PTC_WM_NUMBER"), Len(iProperties.Value("Custom", "PTC_WM_NUMBER")) - 4)
+try
+	oPropValue = oRefDoc.PropertySets("User Defined Properties").Item("JBPARTDESCRIPTION").Value 
+	iProperties.Value("Custom", "JBPARTDESCRIPTION") = oPropValue
+catch
+end try	
+    iLogicVb.UpdateWhenDone = True
+    InventorVb.DocumentUpdate(True)
+End Sub

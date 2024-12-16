@@ -1,0 +1,361 @@
+﻿Sub Main()
+    Try
+
+        'If Parameter("MakePartlist")=False Then
+        '
+        'Return
+        'End If
+
+
+
+        oDocument = ThisDoc.Document
+        Dim oSheet As Sheet
+        oSheet = ThisDoc.Document.ActiveSheet
+
+
+        'If ThisDoc.ModelDocument IsNot Nothing Then
+        'Else
+        '
+        'Return
+        '
+        'End If
+
+        If oSheet.DrawingViews.count = 0 Then
+            'MessageBox.Show("No music", "I don't have the model...")
+            Dim oSheetNew As Sheet = oDocument.ActiveSheet
+            Try
+                oSheetNew.PartsLists.Item(1).Delete
+            Catch
+            End Try
+            Exit Sub
+        End If
+
+
+
+
+        Dim oPartsList As PartsList
+        Try
+
+
+            oPartsList = oDocument.ActiveSheet.PartsLists.Item(1)
+
+
+            'oPartsList.Delete
+        Catch
+            Try
+                'specify the drawing sheet as the first sheet in the collection
+                Dim oSheetNew As Sheet = oDocument.ActiveSheet
+                Dim oPlacementPoint As Point2d
+                oPlacementPoint = ThisApplication.TransientGeometry.CreatePoint2d(0, 0)
+                Dim oDrawingView As DrawingView = oSheetNew.DrawingViews(1)
+
+                oPartsList = oSheetNew.PartsLists.Add(oDrawingView, oPlacementPoint)
+                oPartsList.Style = oDocument.StylesManager.PartsListStyles.Item("Fastener list (Detail sheet)")
+
+
+                'oSheetNew.PartsLists.Item(1).Delete
+
+
+
+
+            Catch
+
+                MessageBox.Show("Can not add the Partlist", "Error")
+            End Try
+        End Try
+
+
+
+        oPartsList.PartsListColumns.Add(PropertyTypeEnum.kCustomProperty, , "CompleteDescription", 4, 0)
+
+
+
+
+        '--------------------------------------------check column Weight and name -------------------------------------------------
+
+        Dim QtyColumnIndex As Integer
+        Dim NameColumnIndex As Integer
+        Dim NumberColumnIndex As Integer
+        Dim CompleteDescriptionIndex As Integer
+
+        Try
+            'look for the first parts list on the drawing
+
+
+            oPartsList = oDocument.ActiveSheet.PartsLists.Item(1)
+
+
+
+
+            Dim oPLCol As Inventor.PartsListColumn
+            Dim currIndex As Integer
+
+
+
+            currIndex = 1
+
+
+            For Each oPLCol In oPartsList.PartsListColumns
+                If Trim(UCase(oPLCol.Title)) = Trim(UCase("name")) Then
+                    NameColumnIndex = currIndex
+                End If
+                currIndex = currIndex + 1
+            Next
+
+            currIndex = 1
+
+
+            For Each oPLCol In oPartsList.PartsListColumns
+                If Trim(UCase(oPLCol.Title)) = Trim(UCase("number")) Then
+                    NumberColumnIndex = currIndex
+                End If
+                currIndex = currIndex + 1
+            Next
+
+            currIndex = 1
+
+
+            For Each oPLCol In oPartsList.PartsListColumns
+                If Trim(UCase(oPLCol.Title)) = Trim(UCase("Qty.")) Then
+                    QtyColumnIndex = currIndex
+                End If
+                currIndex = currIndex + 1
+            Next
+
+            currIndex = 1
+
+            For Each oPLCol In oPartsList.PartsListColumns
+                If Trim(UCase(oPLCol.Title)) = Trim(UCase("CompleteDescription")) Then
+                    CompleteDescriptionIndex = currIndex
+                End If
+                currIndex = currIndex + 1
+            Next
+
+
+
+
+        Catch
+
+            MessageBox.Show("Column names are changed Iloc rule not working anymore", "Error")
+
+
+        End Try
+
+        '------------------------------------ Add total weigth row -----------------------------------------------
+
+
+
+        'Dim chkItemNoCell As Inventor.PartsListCell
+        '
+        '	'Dim chkTotCell As Inventor.PartsListCell
+        '		For Each PLRow In oPartslist.PartsListRows
+        '			If PLRow.Visible Then
+        '				chkTotCell = PLRow.Item(1)
+        '				If chkTotCell.Value = "Total weight all" Then
+        '					PLRow.Remove
+        '				End If
+        '			End If
+        '		Next
+
+
+        Call oPartsList.Sort("NUMBER")
+        Call oPartsList.Renumber()
+
+        'Dim newRow As Inventor.PartsListRow
+        '			newRow = oPartslist.PartsListRows.Add(oPartslist.PartsListRows.Count, False)
+        '			newRow.Height = myRowHeight
+        '	
+        '	
+        '		myCell = newRow.Item(1)
+        '		myCell.Value = "Total weight all"
+
+        ''------------------------------------------------count total weight----------------------------------------------------------------------------
+        'Dim Ttot As Double
+        'Ttot=0
+        '
+        '
+        '	Dim chkTotCellSum As Inventor.PartsListCell
+        '	Dim WeigthWithComma As String
+        '	
+        '			For Each PLRowSum In oPartslist.PartsListRows
+        '			
+        '						
+        '		If PLRowSum.Visible Then
+        '				chkTotCellSum = PLRowSum.Item(weightColumnIndex)
+        '				chkQtyTotCell = PLRowSum.Item(QtyColumnIndex)
+        '				
+        '				Try
+        '					If chkTotCellSum.Value = "" Then
+        '					Else
+        '					WeigthWithComma=Replace(chkTotCellSum.Value,".",",")
+        '					
+        '					
+        '					Ttot=(CDbl(WeigthWithComma)*CDbl(chkQtyTotCell.Value))+Ttot
+        '					
+        '					
+        '					End If
+        '				Catch
+        '				End Try
+        '		End If
+        '		' MessageBox.Show(Ttot, "Title")
+        '		Next	
+        '		
+        ' myCell = newRow.Item(weightColumnIndex)
+        ' myCell.Value = CStr(Round(Ttot,1))
+
+        '----------------------------------------Read Complete description in parts in model----------------------------------------------------
+
+        ''Define the open document
+        '		Dim openDoc As Document
+        '		openDoc = ThisDoc.Document
+        '
+        ''Look at the model file referenced in the open document
+        '		Dim docFile As AssemblyDocument 
+        '		'docFile = ThisDoc.ModelDocument
+        'Try
+        ' docFile = openDoc.ActiveSheet.DrawingViews.Item(1).ReferencedDocumentDescriptor.ReferencedDocument
+        ' 'Dim LevelOfRep As String
+        ' 'LevelOfRep= openDoc.ActiveSheet.DrawingViews.Item(1).ActiveLevelOfDetailRepresentation
+        '
+        '
+        ' Catch
+        ' MsgBox("This rule only works on drawing sheets with an assembly as the first view!")
+        ' Exit Sub
+        ' End Try
+        ' 
+        ' x=0
+        '  For Each oDoc In ThisApplication.Documents.VisibleDocuments
+        '    If docFile.FullFileName=oDoc.FullFileName Then
+        '	x=1
+        '	End If
+        '  Next oDoc
+        ' 
+        ' 'If x=1 Then
+        '
+        'oNewDoc=ThisApplication.documents.itembyname(docFile.FullFileName)
+        '' Else
+        ''oNewDoc = ThisApplication.Documents.Open(docFile.FullFileName, True)
+        ''
+        '' End If
+        ' 
+        ' 
+        ' 
+        '
+        'Dim Occurrences As ComponentOccurrences
+        'Occurrences=oNewDoc.ComponentDefinition.Occurrences
+        '
+        'Dim oOccurrence As ComponentOccurrence
+        'Dim NumberCompleteDescArray(Occurrences.count,2)As String
+        '
+        'Dim num as Integer
+        '
+        'num=0
+        'NUmacc=0
+        '
+        '
+        'Try
+        '
+        'For Each oOccurrence In Occurrences
+        '
+        '
+        '
+        'Dim compDef as Inventor.ComponentDefinition = oOccurrence.Definition
+        '
+        '
+        '	
+        '	Dim customPropSet As PropertySet
+        '	
+        '	
+        '	
+        '	
+        '	    Dim invDoc As Inventor.Document
+        '		
+        '		
+        '		invDoc=compDef.Document
+        '		
+        '		
+        '
+        '    	customPropSet = invDoc.PropertySets.Item("Inventor User Defined Properties")
+        '		
+        '		
+        '		NumberCompleteDescArray(num,1)=customPropSet.Item("PTC_WM_PART_NUMBER").Value
+        '		
+        '
+        '
+        '	
+        '		Try			
+        '			
+        '			NumberCompleteDescArray(num,2)=customPropSet.Item("CompleteDescription").Value
+        '			
+        '			'MessageBox.Show(NumberCompleteDescArray(num,2), "Title")
+        '
+        '
+        '			
+        '		Catch
+        '		NumberCompleteDescArray(num,2)=""
+        '		End Try
+        '	
+        '
+        'num=num+1
+        'Next
+        '
+        'Catch
+        'End Try
+
+        '----------------------------------------Replace name with Complete description if filled in------------------------------------------------------------------------		   
+
+
+
+        Dim StringNumber As String
+
+        For Each RowPartList In oPartsList.PartsListRows
+
+
+            If RowPartList.Visible Then
+                CellNumber = RowPartList.Item(NumberColumnIndex)
+                CellName = RowPartList.Item(NameColumnIndex)
+                CompleteDescription = RowPartList.Item(CompleteDescriptionIndex)
+
+
+                If CompleteDescription.Value = "" Then
+                Else
+
+                    CellName.Value = CompleteDescription.Value
+
+
+                    'MessageBox.Show("Message", "Title")
+
+                End If
+            End If
+            ' MessageBox.Show(Ttot, "Title")
+        Next
+
+
+
+        oPartsList.PartsListColumns.item("CompleteDescription").Remove
+        '----------------------------------------------------------------------------------------------------------------------------			   
+        'Update position
+
+        Dim newmin, newmax As Point2d
+        maxXpoint = (oPartsList.RangeBox.MaxPoint.X) - (oPartsList.RangeBox.MinPoint.X) + 2
+        maxYpoint = (oPartsList.RangeBox.MaxPoint.Y) - (oPartsList.RangeBox.MinPoint.Y) + 1
+
+
+        newmax = ThisApplication.TransientGeometry.CreatePoint2d(maxXpoint, maxYpoint)
+
+        oPartsList.Position = newmax
+
+        '---------------------------------------------------------------------------------------------------------------
+
+        InventorVb.DocumentUpdate()
+
+    Catch ex As Exception
+        ' Show the exception's message.
+        MessageBox.Show(ex.Message)
+
+        ' Show the stack trace, which is a list of methods
+        ' that are currently executing.
+        MessageBox.Show("Stack Trace: " & vbCrLf & ex.StackTrace)
+
+    End Try
+End Sub

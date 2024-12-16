@@ -1,0 +1,95 @@
+﻿Sub Main()
+    On Error GoTo StopRule
+
+    Dim oDoc As DrawingDocument
+    oDoc = ThisDoc.Document
+
+    Dim oAxis, oAxis1 As Centerline
+    oAxis1 = ThisApplication.CommandManager.Pick(SelectionFilterEnum.kDrawingCenterlineFilter, "Select first axis to align other axes to")
+
+    Dim StartPointAxis1, EndPointAxis1, StartPointAxis, EndPointAxis As Point2d
+    StartPointAxis1 = oAxis1.StartPoint
+    EndPointAxis1 = oAxis1.EndPoint
+
+
+    For i = 0 To 100
+        oAxis = ThisApplication.CommandManager.Pick(SelectionFilterEnum.kDrawingCenterlineFilter, "Select axis to align")
+        StartPointAxis = oAxis.StartPoint
+        EndPointAxis = oAxis.EndPoint
+
+        'Get gradiant except if one of the lines is vertical. Then go to HorVer
+        If Round((EndPointAxis.X - StartPointAxis.X) * 1000000.0) <> 0 And Round((EndPointAxis1.X - StartPointAxis1.X) * 1000000.0) <> 0 Then
+            Gradiant = (EndPointAxis.Y - StartPointAxis.Y) / (EndPointAxis.X - StartPointAxis.X)
+            Gradiant1 = (EndPointAxis1.Y - StartPointAxis1.Y) / (EndPointAxis1.X - StartPointAxis1.X)
+        Else
+            GoTo HorVer
+        End If
+
+        'Get perpendicular gradiant, except if the original line is horizontal. Then go to HorVer
+        If Round(gradiant * 1000000.0) <> 0 Then
+            PerpGradiant = 1 / (-Round(gradiant * 1000000.0) / 1000000.0)
+        Else
+            GoTo HorVer
+        End If
+
+        'First check if axes are aligned. Then align lines
+        If Round(gradiant * 1000000.0) = Round(gradiant1 * 1000000.0) Then
+            Basepoint = StartPointAxis.Y - (Gradiant * StartPointAxis.X)
+            PerpStartB = StartPointAxis1.Y - (PerpGradiant * StartPointAxis1.X)
+            PerpEndB = EndPointAxis1.Y - (PerpGradiant * EndPointAxis1.X)
+
+            StartPointAxis.X = (PerpStartB - Basepoint) / (Gradiant - PerpGradiant)
+            StartPointAxis.Y = Gradiant * StartPointAxis.X + Basepoint
+
+            EndPointAxis.X = (PerpEndB - Basepoint) / (Gradiant - PerpGradiant)
+            EndPointAxis.Y = Gradiant * EndPointAxis.X + Basepoint
+
+            If (StartPointAxis.Y < EndPointAxis.Y And oAxis.StartPoint.Y < oAxis.EndPoint.Y) _
+            Or (StartPointAxis.Y > EndPointAxis.Y And oAxis.StartPoint.Y > oAxis.EndPoint.Y) Then
+                oAxis.StartPoint = StartPointAxis
+                oAxis.EndPoint = EndPointAxis
+            Else
+                oAxis.StartPoint = EndPointAxis
+                oAxis.EndPoint = StartPointAxis
+            End If
+
+            GoTo NextLine
+        Else
+            GoTo StopRule
+        End If
+
+
+
+HorVer:     'If lines are horizontal or vertical
+        'Check if axes are horizontal or vertical and in the same orientation, then move axis
+        If (Round((StartPointAxis1.X - EndPointAxis1.X) * 1000000.0) = 0 And Round((StartPointAxis.X - EndPointAxis.X) * 1000000.0) = 0) Then
+            If StartPointAxis.Y < EndPointAxis.Y Then
+                StartPointAxis.Y = MinOfMany(StartPointAxis1.Y, EndPointAxis1.Y)
+                EndPointAxis.Y = MaxOfMany(StartPointAxis1.Y, EndPointAxis1.Y)
+            Else
+                StartPointAxis.Y = MaxOfMany(StartPointAxis1.Y, EndPointAxis1.Y)
+                EndPointAxis.Y = MinOfMany(StartPointAxis1.Y, EndPointAxis1.Y)
+            End If
+            oAxis.StartPoint = StartPointAxis
+            oAxis.EndPoint = EndPointAxis
+        ElseIf (Round((StartPointAxis1.Y - EndPointAxis1.Y) * 1000000.0) = 0 And Round((StartPointAxis.Y - EndPointAxis.Y) * 1000000.0) = 0) Then
+            If StartPointAxis.X < EndPointAxis.X Then
+                StartPointAxis.X = MinOfMany(StartPointAxis1.X, EndPointAxis1.X)
+                EndPointAxis.X = MaxOfMany(StartPointAxis1.X, EndPointAxis1.X)
+            Else
+                StartPointAxis.X = MaxOfMany(StartPointAxis1.X, EndPointAxis1.X)
+                EndPointAxis.X = MinOfMany(StartPointAxis1.X, EndPointAxis1.X)
+            End If
+            oAxis.StartPoint = StartPointAxis
+            oAxis.EndPoint = EndPointAxis
+        Else
+            MessageBox.Show("Axes are not in the same orientation.", "Align axes error", MessageBoxButtons.OK, MessageBoxIcon.Hand, MessageBoxDefaultButton.Button1)
+        End If
+
+NextLine:
+    Next
+
+StopRule:
+End Sub
+
+

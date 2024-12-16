@@ -1,0 +1,77 @@
+﻿Sub Main()
+    Dim oDrawDoc As Inventor.DrawingDocument = ThisApplication.ActiveDocument
+    Dim oRevTable As RevisionTable
+	oNamer = "Remove revision tags"
+	
+	Dim UNDO As Transaction
+	UNDO= ThisApplication.TransactionManager.StartTransaction(oDrawDoc,oNamer)
+	
+    Try 'try to get the first rev table on the active sheet
+        oRevTable = oDrawDoc.ActiveSheet.RevisionTables.Item(1)
+    Catch 'catch error when no rev table is found
+        MessageBox.Show("Error: Most likely no revison table was found", "iLogic")
+        Return
+    End Try
+
+    'define the rev table rows collection
+    Dim InsertPoint As Point2d
+    InsertPoint = oRevTable.Position
+
+    Dim oRows As RevisionTableRows
+    Dim oRow As RevisionTableRow
+    oRows = oRevTable.RevisionTableRows
+    RowCount = oRows.Count
+
+    Dim oColumns As RevisionTableColumns
+    Dim oColumn As RevisionTableColumn
+    oColumns = oRevTable.RevisionTableColumns
+
+    Dim MyArrayList As New ArrayList
+
+    For Each oRow In oRows
+        For Each oColumn In oColumns
+            MyArrayList.add(oRow.Item(oColumn.Title).Text)
+        Next
+    Next
+
+    oRows.Add()
+
+    For Each oRow In oRows
+        If oRow.IsActiveRow Then
+            'do nothing for the active row
+        Else
+            oRow.Delete 'deletes rev tags also
+        End If
+    Next
+
+    For Each oRevTable In oDrawDoc.ActiveSheet.RevisionTables
+        oRevTable.Delete
+    Next
+
+    iProperties.Value("Project", "Revision Number") = 1
+    oDrawDoc.ActiveSheet.RevisionTables.Add2(InsertPoint, True, True,, 1)
+
+    oRevTable = oDrawDoc.ActiveSheet.RevisionTables.Item(1)
+    oRows = oRevTable.RevisionTableRows
+    oColumns = oRevTable.RevisionTableColumns
+
+    For r = 1 To (RowCount - 1)
+        oRows.Add()
+        iProperties.Value("Project", "Revision Number") = r + 1
+    Next
+
+    i = 0
+    For Each oRow In oRows
+        For Each oColumn In oColumns
+            If oColumn.Title = "Revision" Then
+            Else
+                oRow.Item(oColumn.Title).Text = MyArrayList(i)
+            End If
+            i = i + 1
+        Next
+    Next
+
+    oRevTable.Position = InsertPoint
+	
+	UNDO.End
+End Sub

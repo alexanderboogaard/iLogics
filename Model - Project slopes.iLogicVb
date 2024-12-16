@@ -1,0 +1,45 @@
+﻿odoc = ThisDoc.Document
+Dim oParams As Parameters
+Dim oAssdoc As AssemblyDocument = odoc
+Dim oAssCompDef As AssemblyComponentDefinition = oAssdoc.ComponentDefinition
+oParams = oAssCompDef.Parameters
+Dim oUserParams As UserParameters = oParams.UserParameters
+
+If Parameter("slope_input_unit") = "degrees" Then
+	Parameter("d4") = Parameter("slope_trans_input")
+	Parameter("d8") = Parameter("slope_long_input")
+
+	t = Round(Tan(Parameter("slope_trans_input") *(PI/180))* 100,5)
+	l = Round(Tan(Parameter("slope_long_input") *(PI/180))* 100,5)
+
+	Try
+		Parameter("opposite_trans_slope") = t
+	Catch
+		oUserParams.AddByValue("opposite_trans_slope",t, UnitsTypeEnum.kUnitlessUnits)
+	End Try
+
+	Try
+		Parameter("opposite_long_slope") = l
+	Catch
+		oUserParams.AddByValue("opposite_long_slope",l, UnitsTypeEnum.kUnitlessUnits)
+	End Try
+Else
+	Parameter("d4") = Round(Atan(Parameter("slope_trans_input") / 100)/(PI/180),5) 'output atan is rad, "/(PI/180)" converts rad to deg'
+	Parameter("d8") = Round(Atan(Parameter("slope_long_input") / 100)/(PI/180),5) 'output atan is rad, "/(PI/180)" converts rad to deg'
+	
+	t = Round(Parameter("d4"),5)
+	l = Round(Parameter("d8"),5)
+
+	Try
+		Parameter("opposite_trans_slope") = t
+	Catch
+		oUserParams.AddByValue("opposite_trans_slope",t, UnitsTypeEnum.kUnitlessUnits)
+	End Try
+
+	Try
+		Parameter("opposite_long_slope") = l
+	Catch
+		oUserParams.AddByValue("opposite_long_slope",l, UnitsTypeEnum.kUnitlessUnits)
+	End try
+End If
+iLogicVb.UpdateWhenDone = True

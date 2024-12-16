@@ -1,0 +1,551 @@
+﻿Imports System.Collections.Generic
+
+Sub Main()
+	undoDoc = ThisDoc.Document
+	oNamer = "Update Old Drawing"
+	Dim UNDO As Transaction 
+	UNDO = ThisApplication.TransactionManager.StartTransaction(undoDoc, oNamer)
+Break
+    Try
+        TryLength = iProperties.Value("Custom", "DOCUMENTCATEGORY")
+    Catch
+        CustomPropertySet = ThisDoc.Document.PropertySets.Item("Inventor User Defined Properties")
+        CustomPropertySet.Add("", "DOCUMENTCATEGORY")
+    End Try
+
+    Dim oTemplate As String
+    Dim oTemplatePath As String = "C:\Users\" + System.Environment.UserName + "\Janson Bridging BV\Engineering Janson Bridging - Inventor Janson setting\Templates\"
+	
+	'update styles
+	Updatestyles()
+
+    'Selectionbox drawing types-------------------------------------------------------------------------------------
+
+    Dim CExt As New ArrayList
+    CExt.Add("Assembly")
+    CExt.Add("Pos")
+	CExt.Add("Single Pos Element")
+	CExt.Add("Data sheet")
+	CExt.Add("General arrangement drawing")
+    CExt.Add("Typical drawing")
+    CExt.Add("Installation guide")
+	CExt.Add("JPB Installation drawing")
+	CExt.Add("Logistics drawing")
+
+    StrDrawingType = InputListBox("Select drawing type", CExt, "defaultvalue", Title:="Drawing type", ListName:="Extrusion")
+
+    If StrDrawingType = "" Then 'Failed to select drawing
+        MessageBox.Show("Failed to select drawing type. Rule will abort", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error, MessageBoxDefaultButton.Button1)
+        Return
+    ElseIf StrDrawingType = "Single Pos Element" Then
+		iProperties.Value("Custom", "DOCUMENTCATEGORY") = "Assembly"
+	Else
+		iProperties.Value("Custom", "DOCUMENTCATEGORY") = StrDrawingType
+    End If
+
+    'Update titleblock with templates 
+    Dim templatename As String
+    Dim BorderName As String
+    BorderName = "Border (Janson)"
+    oTemplate = ""
+    Select Case StrDrawingType
+
+        Case "Assembly"
+
+            Dim TypeCExt As New ArrayList
+            TypeCExt.Add("Incl. tolerance")
+            TypeCExt.Add("No tolerance")
+            TypeCExt.Add("Project-incl. tolerance")
+            TypeCExt.Add("Project-no tolerance")
+
+            StrDrawingTemplate = InputListBox("Select drawing type", TypeCExt, "test", Title:="Assembly template", ListName:="Extrusion")
+
+            Select Case StrDrawingTemplate
+
+                Case "Incl. tolerance"
+                    oTemplate = oTemplatePath + "Production (Assembly).dwg"
+                    templatename = "Production"
+
+                Case "No tolerance"
+                    oTemplate = oTemplatePath + "Without tolerances\Production (Assembly) (no tolerance).dwg"
+                    templatename = "Production wo table"
+
+                Case "Project-incl. tolerance"
+                    oTemplate = oTemplatePath + "Project - production (Assembly).dwg"
+                    templatename = "Production"
+
+                Case "Project-no tolerance"
+                    oTemplate = oTemplatePath + "Without tolerances\Project - production (Assembly) (no tolerance).dwg"
+                    templatename = "Production wo table"
+
+            End Select
+
+        Case "Pos"
+            Dim TypeCExt As New ArrayList
+            TypeCExt.Add("Incl. tolerance")
+            TypeCExt.Add("No tolerance")
+			TypeCExt.Add("Project-incl. tolerance")
+
+            StrDrawingTemplate = InputListBox("Select drawing type", TypeCExt, "test", Title:="Assembly template", ListName:="Extrusion")
+
+            Select Case StrDrawingTemplate
+
+                Case "Incl. tolerance"
+                    oTemplate = oTemplatePath + "Production (POS).dwg"
+                    templatename = "Production"
+
+                Case "No tolerance"
+                    oTemplate = oTemplatePath + "Without tolerances\Production (POS) (no tolerance).dwg"
+                    templatename = "Production wo table"
+					
+                Case "Project-incl. tolerance"
+                    oTemplate = oTemplatePath + "Project - production (POS).dwg"
+                    templatename = "Production"
+
+            End Select
+
+
+        Case "Data sheet"
+            oTemplate = oTemplatePath + "Production (Data sheet).dwg"
+            templatename = "Data sheet"
+
+        Case "General arrangement drawing"
+            Dim TypeCExt As New ArrayList
+            'TypeCExt.Add("GA-BE-FR")
+            'TypeCExt.Add("GA-BE-NL")
+            TypeCExt.Add("GA-FR")
+            TypeCExt.Add("GA-GE")
+            'TypeCExt.Add("GA-INT")
+            TypeCExt.Add("GA-IT")
+            TypeCExt.Add("GA-NL")
+            TypeCExt.Add("GA-PL")
+            'TypeCExt.Add("GA-UK")
+			TypeCExt.Add("GA-EN")
+
+            StrDrawingTemplate = InputListBox("Select language/country of the title block", TypeCExt, "Language", Title:="GA template", ListName:="Extrusion")
+
+            Select Case StrDrawingTemplate
+                Case "GA-FR"
+                    oTemplate = oTemplatePath + "GA-FR.dwg"
+                    templatename = "GA-FR"
+					updaterevtable()
+
+                Case "GA-GE"
+                    oTemplate = oTemplatePath + "GA-GE.dwg"
+                    templatename = "GA-GE"
+                    updaterevtable()
+
+                Case "GA-IT"
+                    oTemplate = oTemplatePath + "GA-IT.dwg"
+                    templatename = "GA-IT"
+                    updaterevtable()
+
+                Case "GA-NL"
+                    oTemplate = oTemplatePath + "GA-NL.dwg"
+                    templatename = "GA-NL"
+                    updaterevtable()
+
+                    Case "GA-PL"
+                    oTemplate = oTemplatePath + "GA-PL.dwg"
+                    templatename = "GA-PL"
+                    updaterevtable()
+
+                Case "GA-EN"
+                    oTemplate = oTemplatePath + "GA-EN.dwg"
+                    templatename = "GA-EN"
+                    updaterevtable()
+
+            End Select
+
+        Case "Typical drawing"
+            oTemplate = oTemplatePath + "Typical drawing.dwg"
+            templatename = "TYPICAL DRAWING"
+			
+		Case "JPB Installation drawing"
+			oTemplate = oTemplatePath + "Detail drawing.dwg"
+			templatename = "Detail drawing"
+			
+		Case "Logistics drawing"
+            oTemplate = oTemplatePath + "Logistics drawing.dwg"
+            templatename = "Logistics drawing (NL)"
+
+        Case "Installation guide"
+            oTemplate = oTemplatePath + "Installation guide.dwg"
+            BorderName = "Border (Installation guide)"
+			
+		Case "Single Pos Element"
+			
+			Dim TypeCExt As New ArrayList
+            TypeCExt.Add("JB Parts")
+            TypeCExt.Add("Project")
+            
+            StrDrawingType = InputListBox("Select element type", TypeCExt, "Type", Title:="Single Pos Element", ListName:="Extrusion")
+
+            Select Case StrDrawingType
+
+                Case "JB Parts"
+                    oTemplate = oTemplatePath + "Production (Single Pos Element).dwg"
+                    templatename = "Production"
+
+                Case "Project"
+                    oTemplate = oTemplatePath + "Project - production (Single Pos Element).dwg"
+                    templatename = "Production"
+            
+			End Select
+			
+    End Select
+
+    Dim oDoc As DrawingDocument
+    oDoc = ThisDoc.Document
+    Dim oSheet As Sheet
+    oSheet = oDoc.ActiveSheet
+
+    'Title blocks
+    Try
+        oSheet.TitleBlock.Delete
+    Catch
+    End Try
+
+    Try
+        For Each oTBDef As TitleBlockDefinition In oDoc.TitleBlockDefinitions
+            Try
+			oTBDef.Delete
+			Catch
+			End Try
+        Next
+    Catch
+    End Try
+
+    Try
+        ThisDrawing.ResourceFileName = oTemplate
+        Dim oCurrentNumber As Sheet
+        oCurrentNumber = oDoc.ActiveSheet
+        Dim oSheet1 As Sheet
+        For Each oSheet1 In oDoc.Sheets
+            oSheet1.Activate
+            ActiveSheet.TitleBlock = templatename
+        Next
+        oCurrentNumber.Activate
+
+    Catch
+    End Try
+
+    'Borders
+    Try
+        oSheet.Border.Delete
+    Catch
+    End Try
+
+    Try
+        For Each oBorDef As BorderDefinition In oDoc.BorderDefinitions
+            oBorDef.Delete
+        Next
+    Catch
+    End Try
+
+    Try
+        ThisDrawing.ResourceFileName = oTemplate
+        Dim oCurrentNumber As Sheet
+        oCurrentNumber = oDoc.ActiveSheet
+        Dim oSheet1 As Sheet
+        For Each oSheet1 In oDoc.Sheets
+            oSheet1.Activate
+            ActiveSheet.Border = BorderName
+        Next
+    Catch
+    End Try
+
+    'Set custom iProperties and user parameters-----------------------------------------------------------------------
+
+    iLogicVb.RunExternalRule("Drawing - Update Engineering names and year.iLogicVb")
+
+    Dim oDrawDoc As DrawingDocument
+    Dim oMyParameter As UserParameters
+    oDrawDoc = ThisDoc.Document
+    oMyParameter = oDrawDoc.Parameters.UserParameters
+
+    Try
+        oParameter = oMyParameter.Item("DOCUMENTCATEGORY")
+        oParameter.Delete
+    Catch
+    End Try
+    
+    Try
+        TryLength = iProperties.Value("Custom", "ProjectDescription")
+    Catch
+        iProperties.Value("Custom", "ProjectDescription") = "Janson Bridging design"
+    End Try
+
+	Try
+		TryLength = iProperties.Value("Custom", "Year")
+	Catch
+		iProperties.Value("Custom", "Year") = Date.Today.Year
+	End Try
+
+    Try
+        TryLength = iProperties.Value("Custom", "ProjectNumber")
+    Catch
+        iProperties.Value("Custom", "ProjectNumber") = "-"
+    End Try
+
+    If StrDrawingType = "General arrangement drawing" Then
+        Try
+            oParameter = oMyParameter.AddByValue("DOCUMENTCATEGORY", "General arrangement drawing", UnitsTypeEnum.kTextUnits)
+            MultiValue.SetList("DOCUMENTCATEGORY", "No automatic PDF/DWG document", "General arrangement drawing", "Installation drawing", "Typical drawing")
+        Catch
+        End Try
+
+        Try
+            TryLength = Parameter("MakePartlist")
+        Catch
+            oParameter = oMyParameter.AddByValue("MakePartlist", False, UnitsTypeEnum.kBooleanUnits)
+        End Try
+
+	ElseIf StrDrawingType = "JPB Installation drawing" Then
+        Try
+            iProperties.Value("Custom", "DOCUMENTCATEGORY") = "Installation drawing"
+        Catch
+        End Try
+
+    ElseIf StrDrawingType = "Installation guide" Then
+        Try
+            iProperties.Value("Custom", "DOCUMENTCATEGORY") = "Installation drawing"
+        Catch
+        End Try
+
+        Try
+            TryLength = iProperties.Value("Custom", "ChapterNumber")
+        Catch
+            iProperties.Value("Custom", "ChapterNumber") = ""
+        End Try
+
+    ElseIf StrDrawingType = "Typical drawing" Then
+        Try
+            oParameter = oMyParameter.AddByValue("DOCUMENTCATEGORY", "Typical drawing", UnitsTypeEnum.kTextUnits)
+            MultiValue.SetList("DOCUMENTCATEGORY", "No automatic PDF/DWG document", "General arrangement drawing", "Installation drawing", "Typical drawing")
+        Catch
+        End Try
+
+        Try
+            TryLength = Parameter("MakePartlist")
+        Catch
+            oParameter = oMyParameter.AddByValue("MakePartlist", False, UnitsTypeEnum.kBooleanUnits)
+        End Try
+		
+	ElseIf StrDrawingType = "Logistics drawing" Then
+        Try
+            iProperties.Value("Custom", "DOCUMENTCATEGORY") = "Logistics drawing"
+            
+        Catch
+        End Try
+    Else
+        'Not nessessary
+    End If
+
+    'Delete old user parameters and custom iProperties-----------------------------------------------------------------------
+
+    Try
+        TryLength = Parameter("ProjDes")
+        oParameter = oMyParameter.Item("ProjDes")
+        oParameter.Delete
+    Catch
+    End Try
+
+    Try
+        TryLength = Parameter("ProjNum")
+        oParameter = oMyParameter.Item("ProjNum")
+        oParameter.Delete
+    Catch
+    End Try
+
+    Try
+        TryLength = Parameter("iTrigger0")
+        oParameter = oMyParameter.Item("iTrigger0")
+        oParameter.Delete
+    Catch
+    End Try
+
+    Try
+        TryLength = Parameter("DrawingDate")
+        oParameter = oMyParameter.Item("DrawingDate")
+        oParameter.Delete
+    Catch
+    End Try
+
+    Try
+        TryLength = Parameter("STATUS")
+        oParameter = oMyParameter.Item("STATUS")
+        oParameter.Delete
+    Catch
+    End Try
+
+    Try
+        TryLength = Parameter("CreateDate")
+        oParameter = oMyParameter.Item("CreateDate")
+        oParameter.Delete
+    Catch
+    End Try
+
+    'Remove custom iProperties
+    Dim MyArrayList As New ArrayList
+	MyArrayList.Add("MULTISHEET")
+    'MyArrayList.Add("OTHER PROPRTY NAMES")
+	'define custom property collection
+	oCustomPropertySet = ThisDoc.Document.PropertySets.Item("Inventor User Defined Properties")
+	'look at each property in the collection
+    For Each oCustProp In oCustomPropertySet
+        'check property name against the list you want to delete
+        If MyArrayList.Contains(oCustProp.Name) Then
+            'delete the custom iProperty
+            oCustProp.Delete
+        Else
+            'skip it
+        End If
+    Next
+
+    '--------------------------------------------------'Update old weld symbols-----------------------------------------------------------
+    'Dim oDoc As DrawingDocument 
+    oDoc = ThisApplication.ActiveDocument
+    Dim s As String
+    Dim i As Integer
+    Dim pt As Point2d
+
+
+
+    For i = 1 To oDoc.ActiveSheet.DrawingNotes.GeneralNotes.Count
+        s = oDoc.ActiveSheet.DrawingNotes.GeneralNotes.Item(i).FormattedText
+
+        If InStr(s, "◺") Then
+
+            s = Replace(s, "<StyleOverride Font='Mathcad UniMath'>◺</StyleOverride>", "<StyleOverride Font='Segoe UI Symbol'>◺</StyleOverride>")
+            oDoc.ActiveSheet.DrawingNotes.GeneralNotes.Item(i).FormattedText = s
+
+        End If
+    Next
+
+    'Delete all rules ----------------------------------------------------------------------------------
+
+    Auto = iLogicVb.Automation
+    Dim iLogicAuto As Object
+    iLogicAuto = Auto
+    'Dim oDoc As Document
+    'oDoc = ThisApplication.ActiveDocument
+    Dim ruleName As String
+    Dim rules As Object
+
+    For i = 0 To 1      'run twice
+        rules = iLogicAuto.rules(oDoc)
+        If Not (rules Is Nothing) Then
+            For Each rule In rules
+                ruleName = rule.Name
+                iLogicAuto.DeleteRule(oDoc, ruleName)
+            Next
+        End If
+    Next
+
+    'Adjust triggers--------------------------------------------------------------------------------------------
+
+    Trace.WriteLine("Event Driven Rules Copy", "iLogic") 'debug 
+
+    Dim oTemplateDoc As Document
+
+    'ThisDoc.Document.ComponentDefinition.Parameters.UserParameters.AddByValue("CADfiletypes", "Plate", UnitsTypeEnum.kTextUnits)
+    'MultiValue.SetList("CADfiletypes", "Plate", "Item", "Profile", "Assembly", "Shrinkwrap")
+    'CADtype = InputListBox("Choose CAD filetype", MultiValue.List("CADfiletypes"), "Part", Title := "CAD filetype", ListName := "Available Standard filetypes")
+    'ThisDoc.Document.ComponentDefinition.Parameters.Item("CADfiletypes").Delete
+
+    'file to copy events to
+    oInput = ThisApplication.ActiveEditDocument.FullFileName
+    If oInput = "" Then 'catch a new file with no path
+        MessageBox.Show("The location of the current drawing can't be found." & vbNewLine & "Make sure the drawing is saved, then re-run the rule.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Hand, MessageBoxDefaultButton.Button1)
+        Return
+    End If
+
+    'open the template
+    oTemplateDoc = ThisApplication.Documents.Open(oTemplate, False)
+    'CopyEventsToDocuments(oTemplateDoc)
+    CopyEventTriggers(oTemplateDoc)
+    oTemplateDoc.Close
+	
+	
+	'Adjust year--------------------------------------------------------------------------------------------
+	iProperties.Value("Custom", "Year") = Date.Today.Year
+	
+    iLogicVb.UpdateWhenDone = True
+	
+	MessageBox.Show("Updating old Drawing finished", "Update finished", MessageBoxButtons.OK, MessageBoxIcon.None, MessageBoxDefaultButton.Button1)
+	UNDO.End
+		
+End Sub
+
+Sub CopyEventTriggers(ByVal oSourceDoc As Document)
+    Dim oSourceEventProps, oTargetEventProps As Inventor.PropertySet
+    Dim oSetName As String = "iLogicEventsRules"
+    Dim oInternalName As String = "{2C540830-0723-455E-A8E2-891722EB4C3E}"
+    Dim oTargetDoc As Document = ThisDoc.Document
+	
+	If Not oTargetDoc.PropertySets.PropertySetExists(oInternalName, oTargetEventProps) Then
+		oTargetEventProps = oTargetDoc.PropertySets.Add(oSetName, oInternalName)
+	End If
+
+    Try
+        oSourceEventProps = oSourceDoc.PropertySets.Item(oSetName)
+    Catch
+        oSourceEventProps = oSourceDoc.PropertySets.Item("_" & oSetName)
+    End Try
+
+    Try
+        oTargetEventProps = oTargetDoc.PropertySets.Item(oSetName)
+    Catch
+        oTargetEventProps = oTargetDoc.PropertySets.Item("_" & oSetName)
+    End Try
+
+    If oTargetEventProps Is Nothing Then
+        oTargetEventProps = oTargetDoc.PropertySets.Add(oSetName, oInternalName)
+    Else
+        oTargetEventProps.Delete
+        oTargetDoc.PropertySets.Add(oSetName, oInternalName)
+    End If
+
+    For Each oSourceProp As Inventor.Property In oSourceEventProps
+        oTargetEventProps.Add(oSourceProp.Value, oSourceProp.Name, oSourceProp.PropId)
+    Next
+End Sub
+
+Sub updaterevtable()
+	Dim oDrawDoc As Inventor.DrawingDocument = ThisApplication.ActiveEditDocument
+	Dim oRevTable As RevisionTable
+	Dim oRevStyle1 As RevisionTableStyle
+	Dim oRevStyle2 As RevisionTableStyle
+	oRevStyle1 = oDrawDoc.StylesManager.RevisionTableStyles.Item("Revision (Janson)")
+	oRevStyle2 = oDrawDoc.StylesManager.RevisionTableStyles.Item("Revision GA (Janson)")
+
+	Dim oCurrentNumber As Sheet
+		oCurrentNumber = oDrawDoc.ActiveSheet
+
+	For Each oSheet In oDrawDoc.Sheets
+	oSheet.Activate
+	Break
+	Try 
+		oRevTable = oDrawDoc.ActiveSheet.RevisionTables.Item(1)
+        If oRevTable.Style.Name.Contains("GA (Janson)") Then
+            oRevTable.Style = oRevStyle1            
+			oRevTable.Style = oRevStyle2
+        Else 
+            'oRevTable.Style = oRevStyle1
+        End If
+		oSheet.Update
+		Catch 
+		End Try    
+	Next
+
+	oCurrentNumber.Activate
+	end Sub
+
+sub Updatestyles()
+	Dim oCM As CommandManager = ThisApplication.CommandManager
+	Dim oCD As ControlDefinitions = oCM.ControlDefinitions
+	Dim oUpdateStyles As ControlDefinition = oCD.Item("UpdateStylesCmd")
+	oUpdateStyles.Execute2(False)
+	SendKeys.SendWait("Y ")
+End Sub

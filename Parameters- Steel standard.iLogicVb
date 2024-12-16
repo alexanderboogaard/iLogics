@@ -1,0 +1,19 @@
+﻿Dim oPDoc As PartDocument = ThisDoc.Document
+If TypeOf oPDoc.ComponentDefinition Is SheetMetalComponentDefinition Then
+	Dim sMaterial As String = iProperties.Material
+	If sMaterial.Length < 5 Then
+		iProperties.Value("Custom", "STANDARD") = "EN 10210-2"
+	Else
+		Dim sLetter = sMaterial.Substring(4, 1)
+		Select Case sLetter
+			Case "Q"
+				iProperties.Value("Custom", "STANDARD") = "EN 10210-6"
+			Case "M"
+				iProperties.Value("Custom", "STANDARD") = "EN 10210-4"
+			Case "N"
+				iProperties.Value("Custom", "STANDARD") = "EN 10210-3"
+			Case Else
+  				iProperties.Value("Custom", "STANDARD") = "EN 10210-2"
+		End Select
+	End If
+End If

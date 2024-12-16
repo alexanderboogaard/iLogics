@@ -1,0 +1,19 @@
+﻿Sub Main
+	break
+	
+	Try
+		mass = iProperties.Mass
+		weight = iProperties.Value("Custom", "WEIGHT")
+		If iProperties.Value("Custom", "PTC_WM_LIFECYCLE_STATE") = "IN WORK" Then
+			If mass = 0 Then
+				Return
+			ElseIf mass >= weight * 1.05 Then
+				MessageBox.Show("Inventor mass exceeds calculated weight by more than 5%. Please check and update weight of assembly.", "Weight discrepancy", MessageBoxButtons.OK, MessageBoxIcon.Hand, MessageBoxDefaultButton.Button1)
+			ElseIf weight < mass * 0.99 Then
+				MessageBox.Show("Calculated weight by iLogic rules is less than Inventor mass. Please check and update weight of assembly.", "Weight discrepancy", MessageBoxButtons.OK, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button1)
+			End If
+		End If
+	Catch
+	End Try
+End Sub
+

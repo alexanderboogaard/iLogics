@@ -1,0 +1,98 @@
+﻿Sub Main()
+    ' Initialiseer document en bijbehorende objecten
+    Dim oDoc As DrawingDocument = ThisDoc.Document
+    Dim oSheet As Sheet = oDoc.ActiveSheet
+    Dim oSymbolLibs As SketchedSymbolDefinitionLibraries = oDoc.SketchedSymbolDefinitions.SketchedSymbolDefinitionLibraries
+    Dim oSymbolLib As SketchedSymbolDefinitionLibrary = oSymbolLibs.Item("Janson.idw")
+    Dim startColl As ObjectCollection = ThisApplication.TransientObjects.CreateObjectCollection
+    Dim endColl As ObjectCollection = ThisApplication.TransientObjects.CreateObjectCollection
+
+    ' Vraag de gebruiker om de labelpositie te kiezen
+    Dim choices As New ArrayList
+    choices.Add("Top")
+    choices.Add("Bottom")
+    choices.Add("Left")
+    choices.Add("Right")
+    Dim oChoice As String = InputListBox("Choose axis label location", choices, choices, Title:="Add axis label", ListName:="Available label locations")
+    If oChoice = "" Then Exit Sub
+
+    ' Voeg benodigde symbolen toe aan resources
+    Dim symbolNames As String() = {"Axis Left", "Axis Right", "Axis Top", "Axis Bottom"}
+    AddSymbolsToResources(oDoc, oSymbolLib, symbolNames)
+
+    ' Selecteer een as en voeg labels toe
+    Do
+        Try
+            ' Kies een as
+            Dim oAxis As Centerline = ThisApplication.CommandManager.Pick(SelectionFilterEnum.kDrawingCenterlineFilter, "Select axis to label")
+            
+            ' Wacht op selectie of ESC
+            If oAxis Is Nothing Then
+                Exit Do
+            End If
+            
+            Dim oAxisName(0) As String
+            oAxisName(0) = oAxis.ModelWorkFeature.Name
+
+            ' Bereid begin- en eindpunten van de as voor
+            startColl.Clear()
+            startColl.Add(oAxis.StartPoint)
+            startColl.Add(oSheet.CreateGeometryIntent(oAxis, oAxis.StartPoint))
+
+            endColl.Clear()
+            endColl.Add(oAxis.EndPoint)
+            endColl.Add(oSheet.CreateGeometryIntent(oAxis, oAxis.EndPoint))
+
+            ' Voeg het juiste label toe
+            AddLabelToAxis(oSheet, oAxis, oChoice, startColl, endColl, oAxisName)
+        Catch ex As Exception
+            MessageBox.Show("Axis has no name", "Add axis label error", MessageBoxButtons.OK, MessageBoxIcon.Hand, MessageBoxDefaultButton.Button1)
+        End Try
+    Loop While True
+End Sub
+
+'--------------------------- Helper Functions ---------------------------
+
+' Voeg symbolen toe aan de resources in het document
+Sub AddSymbolsToResources(ByVal oDoc As DrawingDocument, ByVal oSymbolLib As SketchedSymbolDefinitionLibrary, ByVal symbolNames As String())
+    For Each symbolName As String In symbolNames
+        Try
+            Dim oSymbol As SketchedSymbolDefinition = oDoc.SketchedSymbolDefinitions.Item(symbolName)
+        Catch
+            oDoc.SketchedSymbolDefinitions.AddFromLibrary(oSymbolLib, symbolName)
+        End Try
+    Next
+End Sub
+
+' Controleer of een as horizontaal is
+Function IsHorizontal(ByVal startPoint As Point2d, ByVal endPoint As Point2d) As Boolean
+    Return Math.Round((startPoint.Y - endPoint.Y) * 100000000.0) = 0
+End Function
+
+' Controleer of een as verticaal is
+Function IsVertical(ByVal startPoint As Point2d, ByVal endPoint As Point2d) As Boolean
+    Return Math.Round((startPoint.X - endPoint.X) * 100000000.0) = 0
+End Function
+
+' Voeg een label toe aan de geselecteerde as
+Sub AddLabelToAxis(ByVal oSheet As Sheet, ByVal oAxis As Centerline, ByVal choice As String, ByVal startColl As ObjectCollection, ByVal endColl As ObjectCollection, ByVal axisName As String())
+    If choice = "Top" Or choice = "Bottom" Then
+        If Not IsHorizontal(oAxis.StartPoint, oAxis.EndPoint) Then
+            If oAxis.StartPoint.Y > oAxis.EndPoint.Y Then
+                oSheet.SketchedSymbols.AddWithLeader(If(choice = "Top", "Axis Top", "Axis Bottom"), If(choice = "Top", startColl, endColl), 0, 1, axisName, 0, 1)
+            Else
+                oSheet.SketchedSymbols.AddWithLeader(If(choice = "Top", "Axis Top", "Axis Bottom"), If(choice = "Top", endColl, startColl), 0, 1, axisName, 0, 1)
+            End If
+        End If
+    ElseIf choice = "Left" Or choice = "Right" Then
+        If Not IsVertical(oAxis.StartPoint, oAxis.EndPoint) Then
+            If oAxis.StartPoint.X < oAxis.EndPoint.X Then
+                oSheet.SketchedSymbols.AddWithLeader(If(choice = "Left", "Axis Left", "Axis Right"), If(choice = "Left", startColl, endColl), 0, 1, axisName, 0, 1)
+            Else
+                oSheet.SketchedSymbols.AddWithLeader(If(choice = "Left", "Axis Left", "Axis Right"), If(choice = "Left", endColl, startColl), 0, 1, axisName, 0, 1)
+            End If
+        End If
+    Else
+        MessageBox.Show("Axis is not in the right orientation", "Add axis label error", MessageBoxButtons.OK, MessageBoxIcon.Hand, MessageBoxDefaultButton.Button1)
+    End If
+End Sub

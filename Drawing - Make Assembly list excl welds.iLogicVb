@@ -1,0 +1,209 @@
+﻿Sub Main()
+    Dim oDocument As DrawingDocument
+    oDocument = ThisDoc.Document
+    Dim oSheet As Sheet
+    oSheet = ThisDoc.Document.ActiveSheet
+
+    If oSheet.DrawingViews.count = 0 Then
+        'MessageBox.Show("No music", "I don't have the model...")
+        Dim oSheetNew As Sheet
+        oSheetNew = oDocument.ActiveSheet
+        Try
+            oSheetNew.PartsLists.Item(1).Delete
+        Catch
+        End Try
+        Exit Sub
+    End If
+
+
+
+    Dim oPartsList As PartsList
+    Try
+        oPartsList = oDocument.ActiveSheet.PartsLists.Item(1)
+    Catch
+
+        'specify the drawing sheet as the first sheet in the collection
+        Dim oSheetNew As Sheet
+        oSheetNew = oDocument.ActiveSheet
+        Dim oPlacementPoint As Point2d
+        oPlacementPoint = ThisApplication.TransientGeometry.CreatePoint2d(0, 0)
+        Dim oDrawingView As DrawingView
+        oDrawingView = oSheetNew.DrawingViews(1)
+
+        Dim oPartsListNew As PartsList
+        oPartsListNew = oSheetNew.PartsLists.Add(oDrawingView, oPlacementPoint)
+
+        maxXpoint = (-(oSheetNew.PartsLists.Item(1).RangeBox.MinPoint.X)) + 2
+        maxYpoint = (-(oSheetNew.PartsLists.Item(1).RangeBox.MinPoint.Y)) + 1.48
+
+        Dim newmin, newmax As Point2d
+        newmax = ThisApplication.TransientGeometry.CreatePoint2d(maxXpoint, maxYpoint)
+
+        oSheetNew.PartsLists.Item(1).Delete
+        oPartsList = oSheetNew.PartsLists.Add(oDrawingView, newmax)
+
+    End Try
+
+    Try
+        Call oPartsList.Sort("Part")
+    Catch
+        Call oPartsList.Sort("Onderdeel")
+    End Try
+
+    Try
+        'look for the first parts list on the drawing
+
+        oPartsList = oDocument.ActiveSheet.PartsLists.Item(1)
+
+        Dim oPLCol As Inventor.PartsListColumn
+        Dim currIndex As Integer
+        Dim weightColumnIndex As Integer
+
+        currIndex = 1
+
+        For Each oPLCol In oPartsList.PartsListColumns
+            If Trim(UCase(oPLCol.Title)) = Trim(UCase("Total weight (kg)")) Or Trim(UCase(oPLCol.Title)) = Trim(UCase("Totaal gewicht (kg)")) Then
+                weightColumnIndex = currIndex
+            End If
+            currIndex = currIndex + 1
+        Next
+
+        'Check wich column Length
+        Dim LengthColumnIndex As Integer
+        currIndex = 1
+
+        For Each oPLCol In oPartsList.PartsListColumns
+            If Trim(UCase(oPLCol.Title)) = Trim(UCase("Length")) Or Trim(UCase(oPLCol.Title)) = Trim(UCase("Lengte")) Then
+
+
+                LengthColumnIndex = currIndex
+            End If
+            currIndex = currIndex + 1
+        Next
+
+        Dim chkItemNoCell As Inventor.PartsListCell
+
+        Dim newRow As Inventor.PartsListRow
+        newRow = oPartslist.PartsListRows.Add(oPartslist.PartsListRows.Count, False)
+        newRow.Height = myRowHeight
+
+        'Dim chkTotCell As Inventor.PartsListCell
+        For Each PLRow In oPartslist.PartsListRows
+            If PLRow.Visible Then
+                chkTotCell = PLRow.Item(1)
+                If chkTotCell.Value = "Total (excl. welds)" Or chkTotCell.Value = "Totaal (excl. lassen)" Then
+                    PLRow.Remove
+                End If
+            End If
+        Next
+
+        myCell = newRow.Item(1)
+        If Trim(UCase(oPLCol.Title)) = Trim(UCase("Totaal gewicht (kg)")) Then
+            myCell.Value = "Totaal (excl. lassen)"
+        Else
+            myCell.Value = "Total (excl. welds)"
+        End If
+
+        '----------------------------------------------------------------------------------------------------------------------------
+        Dim Ttot As Double
+        Ttot = 0
+
+        Dim chkTotCellSum As Inventor.PartsListCell
+
+        For Each PLRowSum In oPartslist.PartsListRows
+
+
+            If PLRowSum.Visible Then
+                chkTotCellSum = PLRowSum.Item(weightColumnIndex)
+                If chkTotCellSum.Value = "" Then
+                Else
+                    Ttot = CDbl(chkTotCellSum.Value) + Ttot
+
+                End If
+            End If
+        Next
+
+        '----------------------------------------------------------------------------------------------------------------------------		   
+        'Code to delete the , after length
+
+        Dim DelKommaInCel As Inventor.PartsListCell
+        Dim lengthString As Integer
+
+        For Each PLRowSum In oPartslist.PartsListRows
+
+
+            If PLRowSum.Visible Then
+                DelKommaInCel = PLRowSum.Item(LengthColumnIndex)
+                If Right(DelKommaInCel.Value, 1) = "," Then
+
+
+                    lengthString = Len(DelKommaInCel.Value) - 1
+                    DelKommaInCel.Value = Left(DelKommaInCel.Value, lengthString)
+
+                End If
+            End If
+        Next
+
+        '----------------------------------------------------------------------------------------------------------------------------			   
+
+        myCell = newRow.Item(weightColumnIndex)
+
+        'Define the open document
+        Dim openDoc As Document
+        openDoc = ThisDoc.Document
+
+        'Look at the model file referenced in the open document
+        Dim docFile As Document
+        docFile = ThisDoc.ModelDocument
+
+        'format model file name                   
+        Dim FNamePos As Long
+        FNamePos = InStrRev(docFile.FullFileName, "\", -1)
+        Dim docFName As String
+        docFName = Right(docFile.FullFileName, Len(docFile.FullFileName) - FNamePos)
+        'Reads mass value from part file
+        Dim oTotalWeldsMass As Double
+
+        If docFile.DocumentType = kAssemblyDocumentObject Then
+
+            Dim oAssDoc As AssemblyDocument
+            oAssDoc = docFile
+
+            Dim cd As ComponentDefinition
+            cd = oAssDoc.ComponentDefinition
+
+
+            If cd.Type = ObjectTypeEnum.kWeldmentComponentDefinitionObject Then
+
+                Dim wcd As WeldmentComponentDefinition
+                wcd = cd
+
+                Dim oO As ComponentOccurrence
+                oO = wcd.Occurrences(1)
+
+                oTotalWeldsMass = oO.MassProperties.Mass
+            Else
+
+                oTotalWeldsMass = 0
+            End If
+
+        Else
+
+            oTotalWeldsMass = 0
+        End If
+
+        Ttotal = Ttot + oTotalWeldsMass
+        'MsgBox(Ttot & "+" & oTotalWeldsMass & "=" & Ttotal) 'For debugging
+        'Writes Value of Mass to Parts List   
+        myCell.Value = CStr(Round(Ttotal, 1))
+
+    Catch
+        'inform user no parts list was found
+        'MessageBox.Show("No Parts List Found", "iLogic")
+
+    End Try
+
+
+    'Forces Inventor to update
+    InventorVb.DocumentUpdate()
+End Sub

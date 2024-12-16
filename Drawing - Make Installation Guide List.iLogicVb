@@ -1,0 +1,57 @@
+﻿' 15-09-2017 Added renumber and sort for fastener and partlist
+' 05-09-2022 Added SAVE ITEM OVERRIDES TO BOM
+
+Sub Main()
+
+    'Declare local variables
+    Dim oDrawDoc As DrawingDocument
+    Dim oSheet As Sheet
+    Dim oDrawingView As DrawingView
+    Dim oPlacementPoint As Point2d
+    Dim oPartsList As PartsList
+    Dim oBorder As Border
+    Dim oStyle As String
+    Dim oPlaceX As Double
+    Dim oPlaceY As Double
+
+    'initialize variables
+    oDrawDoc = ThisDoc.Document
+    oSheet = oDrawDoc.ActiveSheet
+    oDrawingView = oSheet.DrawingViews(1)
+    oBorder = oSheet.Border
+
+    'user input - select parts list style
+    'oStyle = "Part list (Manual)"
+
+    'create parts list
+    oPartsList = oSheet.PartsLists.Add(oDrawingView, oBorder.RangeBox.MinPoint)
+    oPartsList.Style = oDrawDoc.StylesManager.PartsListStyles.Item("Part list (Manual)")
+
+    Call oPartsList.Sort("Part no.")
+    Call oPartsList.Renumber()
+
+    'reposition parts list to top left
+    oPartsListWidth = oPartsList.RangeBox.MaxPoint.X - oPartsList.RangeBox.MinPoint.X
+    oPlaceX = oBorder.RangeBox.MinPoint.X + oPartsListWidth
+    oPlaceY = oBorder.RangeBox.MaxPoint.Y
+    oPlacementPoint = oPartsList.Position()
+    oPlacementPoint.Y = oPlaceY - 0.5
+    oPlacementPoint.X = oPlaceX + 0.5
+    oPartsList.Position = oPlacementPoint
+
+	'create fastener list
+    oPartsList = oSheet.PartsLists.Add(oDrawingView, oBorder.RangeBox.MinPoint)
+    oPartsList.Style = oDrawDoc.StylesManager.PartsListStyles.Item("Fastener list (Manual)")
+
+    Call oPartsList.Sort("Name")
+    Call oPartsList.Renumber()
+
+    'reposition fastener list to right of partlist
+    oPartsListWidth = oPartsList.RangeBox.MaxPoint.X - oPartsList.RangeBox.MinPoint.X
+    oPlacementPoint.X = oPlacementPoint.X + oPartsListWidth
+    oPartsList.Position = oPlacementPoint
+	
+	'save overrides to BOM, so 
+	Call oPartsList.SaveItemOverridesToBOM()
+
+End Sub

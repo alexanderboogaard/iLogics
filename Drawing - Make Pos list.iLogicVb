@@ -1,0 +1,66 @@
+﻿Sub Main()
+    oDocument = ThisDoc.Document
+    Dim oSheet As Sheet
+    oSheet = ThisDoc.Document.ActiveSheet
+
+    If oSheet.DrawingViews.count = 0 Then
+
+        Try
+            oSheet.PartsLists.Item(1).Delete
+        Catch
+        End Try
+
+        Exit Sub
+
+    End If
+
+    Dim oPartsList As PartsList
+
+    Try
+        oPartsList = oDocument.ActiveSheet.PartsLists.Item(1)
+    Catch
+
+        'specify the drawing sheet as the first sheet in the collection
+        Dim oSheetNew As Sheet = oDocument.ActiveSheet
+        Dim oPlacementPoint As Point2d
+        oPlacementPoint = ThisApplication.TransientGeometry.CreatePoint2d(0, 0)
+        Dim oDrawingView As DrawingView = oSheetNew.DrawingViews(1)
+
+        ' Set a reference to the sheet's border
+        Dim oBorder As Border = oSheet.Border
+        oPlacementPoint = ThisApplication.TransientGeometry.CreatePoint2d((oSheet.Width - 1), (oSheet.Height - 1))
+        Dim oPartsListNew As PartsList = oSheetNew.PartsLists.Add(oDrawingView, oPlacementPoint)
+
+    End Try
+
+    '----------------------------------------------------------------------------------------------------------------------------------
+    'Delete Comma if last character
+
+    Try
+        'Check which column Length
+        Dim LengthColumnIndex As Integer
+        currIndex = 1
+        For Each oPLCol In oPartsList.PartsListColumns
+            If Trim(UCase(oPLCol.Title)) = Trim(UCase("Length")) Or Trim(UCase(oPLCol.Title)) = Trim(UCase("Lengte")) Then
+                LengthColumnIndex = currIndex
+            End If
+            currIndex = currIndex + 1
+        Next
+
+        'Code to delete the , after length
+        Dim DelKommaInCel As Inventor.PartsListCell
+        Dim lengthString As Integer
+
+        For Each PLRowSum In oPartslist.PartsListRows
+            If PLRowSum.Visible Then
+                DelKommaInCel = PLRowSum.Item(LengthColumnIndex)
+                If Right(DelKommaInCel.Value, 1) = "," Then
+                    lengthString = Len(DelKommaInCel.Value) - 1
+                    DelKommaInCel.Value = Left(DelKommaInCel.Value, lengthString)
+                End If
+            End If
+        Next
+    Catch
+
+    End Try
+End Sub

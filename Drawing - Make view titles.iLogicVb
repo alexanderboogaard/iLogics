@@ -1,0 +1,148 @@
+﻿'[001] 20-12-2019 Lars - Add Polish view titles
+Sub Main()
+    Dim odoc As DrawingDocument
+    Dim tmpSheet As Sheet
+    Dim tmpView As DrawingView
+    Dim oView As DrawingView
+    Dim ViewNumber() as String
+    Dim ViewLetter() as String
+    Dim ViewCountNumber As Integer
+    Dim ViewCountLetter As Integer
+    Dim StrLanguage as String
+    Dim IntMakeBearingView As Integer
+    Dim myDrawingViewName as String
+    
+    IntMakeBearingView = 1
+    ViewNumber = Split("1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20", ",")
+    ViewLetter = Split("a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z", ",")
+    
+    odoc = ThisApplication.ActiveDocument
+    tmpSheet = odoc.ActiveSheet
+    
+    Dim view_asso_draft As Integer: view_asso_draft = 10506
+    Dim view_auxillary As Integer: view_auxillary = 10499
+    Dim view_custom As Integer: view_custom = 10498
+    Dim view_default As Integer: view_default = 10497
+    Dim view_detail As Integer: view_detail = 10502
+    Dim view_draft As Integer: view_draft = 10505
+    Dim view_OLE As Integer: view_OLE = 10500
+    Dim view_overlay As Integer: view_overlay = 10507
+    Dim view_projected As Integer: view_projected = 10504
+    Dim view_section As Integer: view_section = 10503
+    Dim view_standard As Integer: view_standard = 10501
+    
+    Dim CExt As New ArrayList
+    CExt.Add("French")
+    CExt.Add("Dutch")
+    CExt.Add("English")
+    CExt.Add("German")
+    CExt.Add("Italian")
+    CExt.Add("Polish")
+    
+    StrLanguage = InputListBox("Select language", CExt, "Language", Title:="Select language", ListName:="Extrusion")
+    
+	Dim detailName As String
+	Dim RightView As String
+	Dim TopView As String
+	Dim FrontView As String
+	Dim ISOView As String
+	Dim Bearing As String
+	'Dim detailName As String
+	'Dim detailName As String
+	
+    Select Case StrLanguage
+        Case "French"
+            detailName = "Détail "
+			RightView = "Vue de face " 
+			TopView = "Vue de dessus "
+			FrontView = "Vue de côté "
+			ISOView = "Vue 3D "
+			Bearing = "Vue des appuis "
+        Case "Dutch"
+            detailName = "Detail "
+			RightView = "Vooraanzicht"
+			TopView = "Bovenaanzicht"
+			FrontView = "Zijaanzicht"
+			ISOView = "3D Aanzicht"
+			Bearing = "Opleggingen aanzicht"
+        Case "German"
+            detailName = "Detail "
+			RightView = "Frontansicht " 
+			TopView = "Draufsicht"
+			FrontView = "Seitenansicht "
+			ISOView = "3D ansicht "
+			Bearing = "Lagerplan "
+        Case "Italian"
+            detailName = "Dettaglio "
+			RightView = "Vista frontale " 
+			TopView = "Vista dall'alto "
+			FrontView = "Vista laterale "
+			ISOView = "Vista 3D "
+			Bearing = "Vista appoggi "
+        Case "Polish"
+            detailName = "Detal "
+			RightView = "Widok z przodu " 
+			TopView = "Rzut z góry "
+			FrontView = "Widok z boku "
+			ISOView = "Widok 3D "
+			Bearing = "Rzut podpór "
+        Case Else
+            detailName = "Detail "
+			RightView = "Front view " 
+			TopView = "Top view "
+			FrontView = "Side view "
+			ISOView = "3D view "
+			Bearing = "Bearing view "
+    End Select
+	
+    For Each tmpView In tmpSheet.DrawingViews
+		
+        oView = tmpView
+       
+		
+        If oView.ViewType = view_detail Then
+          '  myDrawingViewName = detailName & ViewNumber(ViewCountNumber)
+           ' ViewCountNumber = ViewCountNumber + 1
+         Dim dtlName as Array = oView.name.split(" ")
+		 myDrawingViewName = detailName + dtlName(1)
+        ElseIf oView.ViewType = view_section Then
+            myDrawingViewName = oView.name	
+            
+           
+	
+        Else
+		
+		select Case tmpView.Camera.ViewOrientationType
+				Case ViewOrientationTypeEnum.kFrontViewOrientation
+					myDrawingViewName = FrontView
+				Case ViewOrientationTypeEnum.kIsoBottomLeftViewOrientation
+					myDrawingViewName = ISOView
+				Case ViewOrientationTypeEnum.kIsoBottomRightViewOrientation
+					myDrawingViewName = ISOView
+				Case ViewOrientationTypeEnum.kIsoTopLeftViewOrientation
+					myDrawingViewName = ISOView
+				Case ViewOrientationTypeEnum.kIsoTopRightViewOrientation
+					myDrawingViewName = ISOView
+				Case ViewOrientationTypeEnum.kRightViewOrientation
+					myDrawingViewName = RightView
+				Case ViewOrientationTypeEnum.kTopViewOrientation
+					If IntMakeBearingView = 1 Then
+						myDrawingViewName = TopView
+						IntMakeBearingView = 2
+					Else
+						myDrawingViewName = Bearing
+					End If
+'End If	
+				Case Else
+					myDrawingViewName = "ERROR. MANUALLY RENAME"
+				End Select
+
+        End If
+        
+        If Not myDrawingViewName = "" Then
+            tmpView.Name = myDrawingViewName
+        End If
+    Next
+    
+    iLogicVb.UpdateWhenDone = True
+End Sub

@@ -1,0 +1,82 @@
+﻿'2021-11-04	Added R. Petela to user list
+'2022-01-06	Added L. de Wit to users + added code to update year
+'2022-06-02	Added R. van Dongen and T. Kloet to users + Removed R. Petela
+'2023-07-10 Removed users + added approver role
+'2023-12-07 Removed Alex van der wiel + added Thijs Diemel		~Luuk
+'2024-01-09 Added Benoit Venier and Stefan Frenzel 				~Luuk
+'2024-04-16 Added Maciek Kaczmarek								~Luuk
+'2024-06-11 Added M. Baumgärtel and H. Pirmahomed				~Luuk
+'2024-08-27 Added J. Kolarik and removed J. Hoekstra			~Luuk	
+
+
+Sub Main()
+    Dim oDoc As DrawingDocument = ThisDoc.Document
+    Dim oMyParameter As UserParameters = oDoc.Parameters.UserParameters
+	
+	'Temp save current author and reviewer + remove old parameters/userlists
+    Try
+        curAuthor = Parameter("AuthorDr")
+        oParameter = oMyParameter.Item("AuthorDr")
+        oParameter.delete
+    Catch
+        curAuthor = ""
+    End Try
+	
+	Try
+        curApprover = Parameter("Approver")
+        oParameter = oMyParameter.Item("Approver")
+        oParameter.Delete
+    Catch
+        curApprover = ""
+    End Try
+	
+	Try
+        curReviewer = Parameter("CheckedBy")
+        oParameter = oMyParameter.Item("CheckedBy")
+        oParameter.delete
+    Catch
+        curReviewer = "N. Kuijpers"
+    End Try
+
+	'New userlist: Will be added in this sequence so make sure it's alphabetically
+	Dim userList = {
+	"-",
+	"A. Boogaard", 
+	"A. Phebe", 
+	"B. Vernier", 
+	"D. Roth", 
+	"G. Goethals", 
+	"G. Migliorati", 
+	"G. van Vught",
+	"H. Pirmahomed",	
+	"J. Kolarik",
+	"J. Oswin", 
+	"J. Rijnhout", 
+	"J. van der Stelt",
+	"L. de Wit",
+	"N. Kuijpers",
+	"N. Ben Ayed",
+	"M. Baumgärtel",
+	"M. Kaczmarek",
+	"S. van Dortmont",
+	"S. Frenzel", 
+	"T. Diemel",
+	"T. Kloet",
+	"V. Tünnesen"
+	}
+		
+    oParameter = oMyParameter.AddByValue("AuthorDr", curAuthor, UnitsTypeEnum.kTextUnits)
+	MultiValue.SetList("AuthorDr", userList)
+    Parameter("AuthorDr") = curAuthor
+  
+    oParameter = oMyParameter.AddByValue("CheckedBy", curReviewer, UnitsTypeEnum.kTextUnits)
+    MultiValue.SetList("CheckedBy", userList)
+    Parameter("CheckedBy") = curReviewer
+	
+	oParameter = oMyParameter.AddByValue("Approver", curApprover, UnitsTypeEnum.kTextUnits)
+    MultiValue.SetList("Approver", userList)
+    Parameter("Approver") = curApprover
+	
+	iProperties.Value("Custom", "Year") = Date.Today.Year
+
+End Sub

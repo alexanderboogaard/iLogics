@@ -1,0 +1,3 @@
+﻿Sub Main()
+    iLogicForm.ShowGlobal("MODEL-PROPERTIES-PROJECT")
+End Sub

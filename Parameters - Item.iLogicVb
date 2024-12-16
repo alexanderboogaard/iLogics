@@ -1,0 +1,207 @@
+﻿'03-12-2020 - AB - Added additional check, so errors are ignored
+
+Sub Main()
+
+    If iProperties.Value("Custom", "PTC_WM_LIFECYCLE_STATE") = "RELEASED" Then
+        Exit Sub
+    Else
+        Try
+
+            Try
+                TryLength = iProperties.Value("Custom", "LENGTH")
+            Catch
+                iProperties.Value("Custom", "LENGTH") = "0"
+            End Try
+
+            Try
+                TryLength = iProperties.Value("Custom", "STANDARD")
+            Catch
+                iProperties.Value("Custom", "STANDARD") = ""
+            End Try
+
+
+            Try
+                TryLength = iProperties.Value("Custom", "PTC_WM_NAME")
+
+            Catch
+                iProperties.Value("Custom", "PTC_WM_NAME") = "Temp"
+            End Try
+
+
+            If ThisDoc.FileName(True) <> "" Then
+                iProperties.Value("Custom", "PTC_WM_NUMBER") = ThisDoc.FileName(True)
+            Else
+                iProperties.Value("Custom", "PTC_WM_NUMBER") = "Temp.Not"
+            End If
+
+            If ThisDoc.FileName(True) <> "" Then
+                iProperties.Value("Custom", "PTC_WM_PART_NUMBER") = ThisDoc.FileName(False)
+            Else
+                iProperties.Value("Custom", "PTC_WM_PART_NUMBER") = "Temp.Not"
+            End If
+
+            Try
+                TryLength = iProperties.Value("Custom", "PAINTAREA")
+            Catch
+                iProperties.Value("Custom", "PAINTAREA") = ""
+            End Try
+
+
+            Try
+                TryLength = iProperties.Value("Custom", "CompleteDescription")
+            Catch
+                iProperties.Value("Custom", "CompleteDescription") = ""
+            End Try
+
+
+            Dim oPartDoc As PartDocument
+            Dim oMyParameter As UserParameters
+            oPartDoc = ThisDoc.Document
+            oMyParameter = oPartDoc.ComponentDefinition.Parameters.UserParameters
+
+
+            Try
+                TryLength = Parameter("JBCONSERVATION")
+            Catch
+                oParameter = oMyParameter.AddByValue("JBCONSERVATION", "None", UnitsTypeEnum.kTextUnits)
+                MultiValue.SetList("JBCONSERVATION", "None", "Hot dip galvanised", "Painted", "Sherardised", "TSA", "TS ZnAl 85-15", "Zinc plated (electrolytic)")
+            End Try
+
+            Try
+                TryLength = Parameter("JBEXECUTIONCLASS")
+            Catch
+                oParameter = oMyParameter.AddByValue("JBEXECUTIONCLASS", "", UnitsTypeEnum.kTextUnits)
+                MultiValue.SetList("JBEXECUTIONCLASS", "", "EXC 1", "EXC 2", "EXC 3", "EXC 4")
+            End Try
+
+            Try
+                TryLength = Parameter("JBSORT")
+            Catch
+                oParameter = oMyParameter.AddByValue("JBSORT", "", UnitsTypeEnum.kTextUnits)
+                MultiValue.SetList("JBSORT", "", "Abutment", "Anti skid", "Balance beam", "Bearing", "Bracing", "Bridge section", "Cable bracket", "Clamp", "Cover", "Deck", "Fastener", "Footwalk", "Guardrail", "Launching", "Lifting", "Panel", "Pillar", "Pin", "Plate", "Platform", "Profile", "Ramp", "Reinforcement", "Screen", "Seismic Restraint", "Stair", "Support beam", "Tool", "Transom", "U-frame", "Water management")
+            End Try
+
+
+            Try
+                TryLength = Parameter("BOMStrucType")
+            Catch
+                oParameter = oMyParameter.AddByValue("BOMStrucType", "Component", UnitsTypeEnum.kTextUnits)
+                MultiValue.SetList("BOMStrucType", "Component", "Inseparable", "Phantom", "Reference")
+            End Try
+
+
+
+            iProperties.Value("Project", "Part Number") = Left(iProperties.Value("Custom", "PTC_WM_NUMBER"), Len(iProperties.Value("Custom", "PTC_WM_NUMBER")) - 4)
+
+            iProperties.Value("Custom", "CONSERVATION") = Parameter("JBCONSERVATION")
+
+            iProperties.Value("Custom", "EXECUTIONCLASS") = Parameter("JBEXECUTIONCLASS")
+            If iProperties.Value("Custom", "EXECUTIONCLASS") = "" Then
+                iProperties.Value("Custom", "EXECUTIONCLASSNR") = ""
+                iProperties.Value("Custom", "EXECUTIONCLASSNR_NL") = ""
+            Else
+                iProperties.Value("Custom", "EXECUTIONCLASSNR") = "Execution class " + Right(Parameter("JBEXECUTIONCLASS"), 1) + " (EN 1090)"
+                iProperties.Value("Custom", "EXECUTIONCLASSNR_NL") = "Uitvoeringsklasse " + Right(Parameter("JBEXECUTIONCLASS"), 1) + " (EN 1090)"
+            End If
+
+            iProperties.Value("Custom", "JBPARTDESCRIPTION") = iProperties.Value("Project", "Description")
+
+            iProperties.Value("Custom", "MAINPROFILE") = iProperties.Value("Summary", "Subject")
+
+            iProperties.Value("Custom", "MATERIAL") = iProperties.Material
+
+            iProperties.Value("Custom", "SORT") = Parameter("JBSORT")
+
+            iProperties.Value("Custom", "WEIGHT") = iProperties.Mass
+
+
+
+            iProperties.Value("Summary", "Title") = iProperties.Value("Custom", "PTC_WM_NAME")
+
+
+
+            If Parameter("JBCONSERVATION") = "Painted" Then
+
+                PaintArea = CStr(iProperties.Value("Custom", "PAINTAREA"))
+
+                If PaintArea = "" Then
+                    PaintArea = Round(iProperties.Area / 1000000, 2)
+                    iProperties.Value("Custom", "PAINTAREA") = CDbl(PaintArea)
+                Else
+                End If
+
+            Else
+                iProperties.Value("Custom", "PAINTAREA") = ""
+            End If
+
+
+
+
+            If Parameter("JBCONSERVATION") = "Hot dip galvanised" Then
+                WeightTemp = Round(iProperties.Mass * 1.04, 1)
+                If WeightTemp = 0 Then
+                    WeightTemp = Round(iProperties.Mass * 1.04, 2)
+                End If
+                If WeightTemp = 0 Then
+                    WeightTemp = Round(iProperties.Mass * 1.04, 3)
+                End If
+                If WeightTemp = 0 Then
+                    WeightTemp = Round(iProperties.Mass * 1.04, 4)
+                End If
+                If WeightTemp = 0 Then
+                    WeightTemp = Round(iProperties.Mass * 1.04, 5)
+                End If
+            Else
+                WeightTemp = Round(iProperties.Mass, 1)
+                If WeightTemp = 0 Then
+                    WeightTemp = Round(iProperties.Mass, 2)
+                End If
+                If WeightTemp = 0 Then
+                    WeightTemp = Round(iProperties.Mass, 3)
+                End If
+                If WeightTemp = 0 Then
+                    WeightTemp = Round(iProperties.Mass, 4)
+                End If
+                If WeightTemp = 0 Then
+                    WeightTemp = Round(iProperties.Mass, 5)
+                End If
+            End If
+
+            iProperties.Value("Custom", "WEIGHT") = WeightTemp
+
+            Try
+                ' Get part component definition
+                Dim oCompDef As PartComponentDefinition = ThisDoc.Document.ComponentDefinition
+                ' Change BOM Structure based on multi value parameter
+                ' BOM Structure Enumerator values are available in the programming help menu in Inventor.
+
+
+                Select Case Parameter("BOMStrucType")
+
+                    Case "Component"
+                        oCompDef.BOMStructure = "51970"
+                        iProperties.Value("Custom", "partType") = "component"
+                    Case "Phantom"
+                        oCompDef.BOMStructure = "51971"
+                        iProperties.Value("Custom", "partType") = "component"
+                    Case "Reference"
+                        oCompDef.BOMStructure = "51972"
+                        iProperties.Value("Custom", "partType") = "component"
+                    Case "Purchased"
+                        oCompDef.BOMStructure = "51973"
+                    Case "Inseparable"
+                        oCompDef.BOMStructure = "51974"
+                        iProperties.Value("Custom", "partType") = "inseparable"
+                End Select
+
+            Catch
+            End Try
+
+        Catch
+        End Try
+
+    End If
+
+End Sub
+
+

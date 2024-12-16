@@ -1,0 +1,3 @@
+﻿Sub Main()
+    iLogicForm.ShowGlobal("DRAWING-ASSEMBLY+POS+DATA SHEET PROPERTIES")
+End Sub

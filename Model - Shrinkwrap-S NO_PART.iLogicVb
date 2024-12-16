@@ -1,0 +1,19 @@
+﻿Dim fileName As String = ThisDoc.FileName
+Dim fileNameWithoutExtension As String = IO.Path.GetFileNameWithoutExtension(fileName)
+Dim lastCharacter As Char = fileNameWithoutExtension.LastOrDefault()
+Dim oShrinkWrap As PartComponentDefinition = ThisDoc.Document.ComponentDefinition
+
+Break
+
+If Char.ToUpper(lastCharacter) = "S" Then
+	oShrinkWrap.BOMStructure = "51972"
+	Else
+		oShrinkWrap.BOMStructure = "51971"
+End If
+
+'kDefaultBOMStructure=51969 'The Default Structure type.
+'kNormalBOMStructure=51970 'The normal Structure type.
+'kPhantomBOMStructure=51971 'The phantom Structure type.
+'kReferenceBOMStructure=51972 'The reference Structure type.
+'kPurchasedBOMStructure=51973 ' The purchased Structure type.
+'kInseparableBOMStructure=51974 'The inseparable Structure type.

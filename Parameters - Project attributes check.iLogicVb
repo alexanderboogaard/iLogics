@@ -1,0 +1,52 @@
+﻿Sub Main()
+	 ''Check if all required items are filled in
+    oText = ""
+    counter = 0
+    If iProperties.Value("Project", "Part Number") = "" Then
+        oText = oText & "Project number" & vbLf
+        counter = counter + 1
+    End If
+
+    If iProperties.Value("Custom", "PTC_WM_NAME") = "" Then
+        oText = oText & "Project name" & vbLf
+        counter = counter + 1
+    End If
+
+    If iProperties.Value("Custom", "PROJECTOFFICE") = " " Then
+        oText = oText & "Project office" & vbLf
+        counter = counter + 1
+    End If
+    If iProperties.Value("Custom", "TYPEOFBRIDGE") = " " Then
+        oText = oText & "Type of bridge" & vbLf
+        counter = counter + 1
+    End If
+    If iProperties.Value("Custom", "LENGTH") = 0 Then
+        oText = oText & "Length" & vbLf
+        counter = counter + 1
+    End If
+	If iProperties.Value("Custom", "GUARDRAILSYSTEM") = "_" Then
+        oText = oText & "Guardrail" & vbLf
+        counter = counter + 1
+    End If
+    If iProperties.Value("Custom", "WIDTH") = 0 Then
+        oText = oText & "Width" & vbLf
+        counter = counter + 1
+    End If
+    If iProperties.Value("Custom", "LOAD") = " " Then
+        oText = oText & "Load on bridge" & vbLf
+        counter = counter + 1
+    End If
+    If iProperties.Value("Custom", "REGULATION") = " " Then
+        oText = oText & "Regulation" & vbLf
+        counter = counter + 1
+    End If
+    If iProperties.Value("Custom", "EXECUTIONCLASS") = " " Then
+        oText = oText & "Execution class" & vbLf
+        counter = counter + 1
+    End If
+
+    If counter > 0 Then
+        MessageBox.Show("The following required fields are missing:" & vbLf & oText, "Empty Fields", MessageBoxButtons.OK, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button1)
+        Return
+    End If
+End Sub

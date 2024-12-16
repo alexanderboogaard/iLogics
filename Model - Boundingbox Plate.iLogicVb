@@ -1,0 +1,117 @@
+﻿'03-12-2020 - AB - Added additional check, so errors are ignored
+'9-11-2022 - Added decimals (if any) to dimensions.
+
+Sub Main()
+	undoDoc = ThisApplication.ActiveDocument
+	oNamer = "Model - Boudingbox plate"
+	Dim UNDO As Transaction 
+	UNDO = ThisApplication.TransactionManager.StartTransaction(undoDoc, oNamer)
+Break
+
+    If iProperties.Value("Custom", "PTC_WM_LIFECYCLE_STATE") = "RELEASED" Then
+        Exit Sub
+    Else
+        Try
+            Dim oDoc = ThisDoc.Document
+
+            'Check if document is a part type
+            If oDoc.DocumentType = kPartDocumentObject Then 'Confirmed part
+
+                'Sometimes it won't work and the old values are saved (if any)
+                SubTemp = iProperties.Value("Summary", "Subject")
+                Try
+                    JB_LTemp = iProperties.Value("Custom", "JB_L")
+                Catch
+                    iProperties.Value("Custom", "JB_L") = ""
+                End Try
+
+                'Check if there is something wrong with the document
+                If oDoc.ComponentDefinition.SurfaceBodies.Count > 1 Then
+                    iProperties.Value("Summary", "Subject") = ""
+                    iProperties.Value("Custom", "JB_L") = ""
+                    Exit Sub
+                End If
+
+                'Unfold actions if it is a sheetmetal
+                If oDoc.SubType = "{9C464203-9BAE-11D3-8BAD-0060B0CE6BB4}" Then 'Confirmed Sheetmetal
+
+                    Dim oSheetMetal As SheetMetalComponentDefinition = oDoc.ComponentDefinition
+
+                    Try
+                        ThisApplication.ScreenUpdating = False
+                        Try
+                            oSheetMetal.FlatPattern.Edit
+                        Catch
+                            oSheetMetal.Unfold
+                            oSheetMetal.FlatPattern.Edit
+                        End Try
+
+                        Size = CalcXYZ()
+
+                        oSheetMetal.FlatPattern.ExitEdit
+
+                        ThisApplication.ScreenUpdating = True
+
+                    Catch
+                        ThisApplication.ScreenUpdating = True
+                        iProperties.Value("Summary", "Subject") = SubTemp
+                        iProperties.Value("Custom", "JB_L") = JB_LTemp
+
+                    End Try
+
+                Else 'Confirm Standard
+
+                    Size = CalcXYZ()
+
+                End If
+
+                iProperties.Value("Summary", "Subject") = "PL" & CStr(Round(Size(2), 1)).Replace(",", ".") & "x" & CStr(Round(Size(1), 1)).Replace(",", ".") 'Size(2) = Thickness, Size(1) = Width
+                iProperties.Value("Custom", "LENGTH") = CStr(Round(Size(0), 1)).Replace(",", ".") 'Size(0) = Length
+
+
+                If Parameter("JBSORT") = "Sticker" Then
+                    iProperties.Value("Custom", "Stickerheight") = CStr(Round(Size(1))) 'Size(0) = Length
+                End If
+            End If
+
+
+        Catch
+        End Try
+
+    End If
+	UNDO.End
+
+End Sub
+
+ReadOnly Property CalcXYZ()
+    Get
+        Dim oBox = ThisDoc.Document.ComponentDefinition
+        Dim XYZ(2) 'Declare array to place values in
+
+        X = 10 * (oBox.RangeBox.MaxPoint.X - oBox.RangeBox.MinPoint.X)
+        Y = 10 * (oBox.RangeBox.MaxPoint.Y - oBox.RangeBox.MinPoint.Y)
+        Z = 10 * (oBox.RangeBox.MaxPoint.Z - oBox.RangeBox.MinPoint.Z)
+
+        Parameter.Quiet = True
+        THICKNESS = MinOfMany(X, Y, Z)
+        LENGTH = MaxOfMany(X, Y, Z)
+        'Create a List
+        Dim iList As New List(Of Decimal)()
+        'Add item X, Y, Z to the list
+        iList.Add(X)
+        iList.Add(Y)
+        iList.Add(Z)
+        'Remove the item with the value of THICKNESS and LENGTH (it only delete's one of the values if LENGTH and WIDTH are equal)
+        iList.Remove(THICKNESS)
+        iList.Remove(LENGTH)
+        'Now the list contains only the width value
+        'Convert the remaining iList item to a Double
+        WIDTH = iList(0)
+
+        XYZ(0) = LENGTH
+        XYZ(1) = WIDTH
+        XYZ(2) = THICKNESS
+
+        Return XYZ
+    End Get
+End Property

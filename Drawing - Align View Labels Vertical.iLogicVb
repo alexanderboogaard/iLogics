@@ -1,0 +1,33 @@
+﻿Sub Main()
+    On Error GoTo StopRule
+
+    Dim oDoc As DrawingDocument
+    oDoc = ThisDoc.Document
+
+    Dim oViewlabel, oViewlabel1 As DrawingViewLabel
+    oViewlabel1 = ThisApplication.CommandManager.Pick(SelectionFilterEnum.kDrawingViewLabelFilter, "Select first view label to align other view labels to")
+
+    Dim LabelPoint, LabelPoint1 As Point2d
+    LabelPoint1 = oViewlabel1.Position()
+
+    For i = 0 To 100
+        oViewlabel = ThisApplication.CommandManager.Pick(SelectionFilterEnum.kDrawingViewLabelFilter, "Select view label to align")
+        LabelPoint = oViewlabel.Position()
+        LabelPoint.X = LabelPoint1.X
+        oViewlabel.Position = LabelPoint
+    Next
+
+StopRule:
+End Sub
+
+'Private Function GetViewLabel1(ByVal oDoc As DrawingDocument) As DrawingViewLabel
+'Dim Viewlabel as DrawingViewLabel
+'Viewlabel = ThisApplication.CommandManager.Pick(SelectionFilterEnum.kDrawingViewLabelFilter, "Select first view label to align other view labels to")
+'Return Viewlabel 
+'End Function
+'
+'Private Function GetViewLabel(ByVal oDoc As DrawingDocument) As DrawingViewLabel
+'Dim Viewlabel as DrawingViewLabel
+'Viewlabel = ThisApplication.CommandManager.Pick(SelectionFilterEnum.kDrawingViewLabelFilter, "Select view label to align")
+'Return Viewlabel 
+'End Function

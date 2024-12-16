@@ -1,0 +1,41 @@
+﻿Sub Main()
+    Dim oDrawDoc As DrawingDocument
+    oDrawDoc = ThisApplication.ActiveDocument
+    oSheet = oDrawDoc.ActiveSheet
+    Dim oTitleBlockDef As TitleBlockDefinition
+    oTitleBlockDef = oSheet.TitleBlock.Definition
+
+    Dim oSketch As DrawingSketch
+    oTitleBlockDef.Edit(oSketch)
+    'Dim oDim As DimensionConstraint
+    'For Each oDim In oSketch.DimensionConstraints
+    'If oDim.Parameter.Name = "d97" Then
+    ''toggle the dimension value ( in inches)
+    'oDim.Parameter.Value = Parameter("DistNote")
+    'End If
+    'Next
+    Dim PosTB As Point2d
+    Dim PosTBNW As Point2d
+    Dim x = 1
+    Dim oTextBox As Inventor.TextBox
+
+    For Each oTextBox In oSketch.TextBoxes
+        Try
+
+            If InStr(oTextBox.Text, "NOTE") Then
+                PosTB = oTextBox.Origin
+                MessageBox.Show(oTextBox.Text & "Position" & PosTB.X & "." & PosTB.Y, "Title")
+                PosTBNW.Y = 30
+                PosTBNW.X = PosTB.X
+                oTextBox.SetColor(30, 255, 30)
+                oTextBox.Origin = PosTBNW
+            End If
+        Catch
+
+        End Try
+
+    Next
+    'oTitleBlockDef.ExitEdit(True)
+
+    oDrawDoc.Update
+End Sub

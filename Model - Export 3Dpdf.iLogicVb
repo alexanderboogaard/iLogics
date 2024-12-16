@@ -1,0 +1,128 @@
+﻿Sub Main()
+    Try
+        Dim Filename3d As String
+        Filename3d = iProperties.Value("Custom", "PTC_WM_PART_NUMBER")
+        iProperties.Value("Custom", "PDFNAME") = Filename3d + "-3D"
+    Catch
+    End Try
+
+    Try
+        Dim EngDate As String
+        EngDate = iProperties.Value("Status", "Eng. Approved Date")
+        iProperties.Value("Custom", "PDFDATE") = EngDate.Split(" ")(0)
+    Catch
+    End Try
+
+
+    'Code Adapted from Inventor API samles with some twaeks by @ClintCadline
+    'Originally published On Cadline Community https://www.cadlinecommunity.co.uk/hc/en-us/articles/213505925
+    'On Error GoTo JansonErrorTrapper:
+    ' Get the 3D PDF Add-In.
+    Dim oPDFAddIn As ApplicationAddIn
+    Dim oAddin As ApplicationAddIn
+    For Each oAddin In ThisApplication.ApplicationAddIns
+        If oAddin.ClassIdString = "{3EE52B28-D6E0-4EA4-8AA6-C2A266DEBB88}" Then
+            oPDFAddIn = oAddin
+            Exit For
+        End If
+    Next
+
+    If oPDFAddIn Is Nothing Then
+        MsgBox("Inventor 3D PDF Addin not loaded.")
+        Exit Sub
+    End If
+
+    UserinputRequired = MessageBox.Show("You are about to publish a 3D PDF, this could take some time (depending on model complexity & accuracy level of the PDF)" & vbLf & vbLf & "Do you wish to Continue?" _
+    , "Janson - iLogic 3D PDF Export", MessageBoxButtons.YesNo, MessageBoxIcon.Information, MessageBoxDefaultButton.Button1)
+    If UserinputRequired = vbNo Then
+        Return
+    Else
+
+        Dim oPDFConvertor3D = oPDFAddIn.Automation
+
+        'Set a reference to the active document (the document to be published).
+        Dim oDocument As Document = ThisApplication.ActiveDocument
+
+        ' Create a NameValueMap objectfor all options...
+        Dim oOptions As NameValueMap = ThisApplication.TransientObjects.CreateNameValueMap
+        'Dim STEPFileOptions As NameValueMap = ThisApplication.TransientObjects.CreateNameValueMap
+
+
+        ' All Possible Options
+        ' Export file name and location...
+        oOptions.Value("FileOutputLocation") = ("c:\temp\" + ThisDoc.FileName(False) + "-3D.pdf")
+        ' Export annotations?
+        oOptions.Value("ExportAnnotations") = 0
+        ' Export work features?
+        oOptions.Value("ExportWokFeatures") = 0
+        ' Attach STEP file to 3D PDF?
+        oOptions.Value("GenerateAndAttachSTEPFile") = False
+        ' Limit export to entities in selected view representation(s)
+        oOptions.Value("LimitToEntitiesInDVRs") = True
+        ' Export all properties?
+        oOptions.Value("ExportAllProperties") = False
+        ' OR - Set the specific properties to export
+        Dim sProps(5) As String
+        sProps(0) = "{32853F0F-3444-11D1-9E93-0060B03C1CA6}:Engineer"
+        sProps(1) = "{D5CDD505-2E9C-101B-9397-08002B2CF9AE}:PDFDATE"
+        sProps(2) = "{D5CDD505-2E9C-101B-9397-08002B2CF9AE}:PDFNAME"
+        sProps(3) = "{D5CDD505-2E9C-101B-9397-08002B2CF9AE}:PTC_WM_PART_NUMBER"
+        sProps(4) = "{D5CDD505-2E9C-101B-9397-08002B2CF9AE}:JBPARTDESCRIPTION"
+        sProps(5) = "{D5CDD505-2E9C-101B-9397-08002B2CF9AE}:PTC_WM_NAME"
+        oOptions.Value("ExportProperties") = sProps
+
+        ' Open the 3D PDF when export is complete?
+        'oOptions.Value("ViewPDFWhenFinished") = False
+
+        'Accuracy - selection by Arraylist
+        Dim MyArrayList As New ArrayList
+        MyArrayList.Add("Very High")
+        MyArrayList.Add("High")
+        MyArrayList.Add("Medium")
+        MyArrayList.Add("Low")
+
+        ACCURACYinput = InputListBox("Select an Accuracy Level for the PDF -- If you do not select anything the default is set to *Low*", MyArrayList, d0, Title:="Set Accuracy", ListName:="List")
+        If ACCURACYinput = "Very High" Then
+            ACCURACYtoUSE = AccuracyEnum.kVeryHigh
+        ElseIf ACCURACYinput = "High" Then
+            ACCURACYtoUSE = AccuracyEnum.kHigh
+        ElseIf ACCURACYinput = "Medium" Then
+            ACCURACYtoUSE = AccuracyEnum.kMedium
+        ElseIf ACCURACYinput = "Low" Then
+            ACCURACYtoUSE = AccuracyEnum.kLow
+        ElseIf ACCURACYinput = "" Then
+            ACCURACYtoUSE = AccuracyEnum.kLow
+        End If
+        oOptions.Value("VisualizationQuality") = ACCURACYtoUSE
+
+        ' Choose the export template based off the current document type
+        If oDocument.DocumentType = DocumentTypeEnum.kPartDocumentObject Then
+            oOptions.Value("ExportTemplate") = "Q:\ENG\Software\Autodesk\Inventor Janson setting\Templates\JB-INT-3D.pdf"
+        Else
+            oOptions.Value("ExportTemplate") = "Q:\ENG\Software\Autodesk\Inventor Janson setting\Templates\JB-INT-3D.pdf"
+        End If
+
+        ' Define a file to attach to the exported 3D PDF - note here I have picked an Excel spreadsheet
+        ' You need to use the full path and filename - if it does not exist the file will not be attached.
+        '    Dim oAttachedFiles As String() = {"C:\FileToAttach.xlsx"}
+        '    oOptions.Value("AttachedFiles") = oAttachedFiles
+
+        ' Set the design view(s) to export - note here I am exporting only the active design view (view representation)
+        Dim sDesignViews(0) As String
+        sDesignViews(0) = oDocument.ComponentDefinition.RepresentationsManager.ActiveDesignViewRepresentation.Name
+        oOptions.Value("ExportDesignViewRepresentations") = sDesignViews
+
+        ThisApplication.StatusBarText = "Exporting your 3D PDF --- This could take some time, depending on model size & complexity (as well as PDF accuracy), but it will be worth the wait --- We'll let you know when it's ready --- There is no progress bar"
+        'Publish document.
+        Call oPDFConvertor3D.Publish(oDocument, oOptions)
+        ThisApplication.StatusBarText = "Your 3D PDF is ready"
+        i = MessageBox.Show("Your 3D PDF is ready and saved in C:\Temp\" & vbLf & vbLf &
+        "Would you like to preview the PDF ? ", " Janson : iLogic - 3D PDF Publisher ", MessageBoxButtons.YesNo)
+        If i = vbYes Then : launchviewer = 1 : Else : launchviewer = 0 : End If
+        If launchviewer = 1 Then ThisDoc.Launch("c:\temp\" + ThisDoc.FileName(False) + "-3D.pdf")
+    End If
+    Return
+
+    'JansonErrorTrapper:
+    'MessageBox.Show("There is a problem -- The PDF cannot be published -- Please ensure that you are in a Part or Assembly file -- Ensure that all parts (in Assemblies) are fully resolved, models with missing links cannot be used for publishing 3D PDF's","Cadline - iLogic 3D PDF Export")
+End Sub
